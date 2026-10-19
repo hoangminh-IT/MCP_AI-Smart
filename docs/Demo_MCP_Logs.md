@@ -17,4 +17,5 @@
     "response_status": "SUCCESS",
     "result_count": 1
   }
-]
+]git add .
+git commit -m "docs(testing): add SmokeTest checklist, Postman testcases and MCP Demo logs (T044, T046, T065)"
