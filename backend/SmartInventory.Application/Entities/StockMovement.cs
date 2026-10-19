@@ -17,6 +17,12 @@ public class StockMovement
     [Column("quantity")]
     public int Quantity { get; set; }
 
+<<<<<<< HEAD
+=======
+    [Column("reason")]
+    public string Reason { get; set; } = string.Empty;
+
+>>>>>>> origin/feature/inventory
     [Column("created_at")]
     public DateTime CreatedAt { get; set; } =
         DateTime.UtcNow;

@@ -112,6 +112,14 @@ namespace SmartInventory.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("product_id");
 
+<<<<<<< HEAD
+=======
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("reason");
+
+>>>>>>> origin/feature/inventory
                     b.Property<int>("Quantity")
                         .HasColumnType("integer")
                         .HasColumnName("quantity");
