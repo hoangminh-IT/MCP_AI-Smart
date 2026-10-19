@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/backend/">
+    <Project Path="backend/SmartInventory.Api/SmartInventory.Api.csproj" />
+    <Project Path="backend/SmartInventory.Application/SmartInventory.Application.csproj" />
+    <Project Path="backend/SmartInventory.Infrastructure/SmartInventory.Infrastructure.csproj" />
+    <Project Path="backend/SmartInventory.McpServer/SmartInventory.McpServer.csproj" />
+  </Folder>
+</Solution>
