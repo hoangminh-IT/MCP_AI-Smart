@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SmartInventory.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddSingleton<SmartInventory.Application.Services.ProductService>();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString(
@@ -35,3 +36,4 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
