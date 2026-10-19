@@ -1,3 +1,4 @@
+using SmartInventory.Api.Services;
 using Microsoft.EntityFrameworkCore;
 using SmartInventory.Infrastructure.Data;
 
@@ -9,6 +10,13 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Add services to the container.
 
 builder.Services.AddControllers();
+
+builder.Services.AddHttpClient<GeminiService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
+builder.Services.AddTransient<McpClientService>();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
