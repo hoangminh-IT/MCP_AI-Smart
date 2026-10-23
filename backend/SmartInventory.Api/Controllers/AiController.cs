@@ -1,63 +1,36 @@
-
-using System.Net;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SmartInventory.Api.Services;
+using Microsoft.AspNetCore.RateLimiting;
+using SmartInventory.Application.Ai;
 
 namespace SmartInventory.Api.Controllers;
 
-[ApiController]
-[Route("api/ai")]
-public class AiController : ControllerBase
+[ApiController, Route("api/ai"), Authorize(Roles = "Admin,Staff")]
+public sealed class AiController(IAiChatService chat) : ControllerBase
 {
-    private readonly GeminiService _geminiService;
+    private int UserId => int.Parse(User.FindFirstValue("sub")!, System.Globalization.CultureInfo.InvariantCulture);
 
-    public AiController(GeminiService geminiService)
+    [HttpGet("status")]
+    public AiProviderStatus Status() => chat.GetStatus();
+    [HttpGet("sessions")]
+    public Task<IReadOnlyList<AiSessionDto>> List(CancellationToken token) => chat.ListAsync(UserId, token);
+    [HttpPost("sessions")]
+    public async Task<ActionResult<AiSessionDto>> Create(AiTitleRequest request, CancellationToken token)
     {
-        _geminiService = geminiService;
+        var session = await chat.CreateAsync(UserId, request.Title, token);
+        return CreatedAtAction(nameof(Get), new { sessionId = session.Id }, session);
     }
-
-    public record ChatRequest(string Message);
-
-    [HttpPost("chat")]
-    public async Task<IActionResult> Chat(
-        [FromBody] ChatRequest request)
+    [HttpGet("sessions/{sessionId:guid}")]
+    public Task<AiConversationDto> Get(Guid sessionId, CancellationToken token) => chat.GetAsync(UserId, sessionId, token);
+    [HttpPut("sessions/{sessionId:guid}")]
+    public Task<AiSessionDto> Rename(Guid sessionId, AiTitleRequest request, CancellationToken token) => chat.RenameAsync(UserId, sessionId, request.Title, token);
+    [HttpDelete("sessions/{sessionId:guid}")]
+    public async Task<IActionResult> Delete(Guid sessionId, CancellationToken token)
     {
-        if (string.IsNullOrWhiteSpace(request.Message))
-        {
-            return BadRequest(new
-            {
-                error = "Cau hoi khong duoc de trong"
-            });
-        }
-
-        try
-        {
-            var answer = await _geminiService.AskAsync(
-                request.Message);
-
-            return Ok(new { answer });
-        }
-        catch (OperationCanceledException)
-        {
-            return StatusCode(504, new
-            {
-                error = "Gemini phan hoi qua 30 giay. Vui long thu lai."
-            });
-        }
-        catch (HttpRequestException ex)
-            when (ex.StatusCode == HttpStatusCode.TooManyRequests)
-        {
-            return StatusCode(429, new
-            {
-                error = "Gemini vuot gioi han su dung API. Vui long thu lai sau."
-            });
-        }
-        catch (HttpRequestException)
-        {
-            return StatusCode(502, new
-            {
-                error = "Khong the ket noi den Gemini AI."
-            });
-        }
+        await chat.DeleteAsync(UserId, sessionId, token);
+        return NoContent();
     }
+    [HttpPost("sessions/{sessionId:guid}/messages"), EnableRateLimiting("ai")]
+    public Task<AiReply> Send(Guid sessionId, AiMessageRequest request, CancellationToken token) => chat.SendAsync(UserId, sessionId, request.Message, token);
 }

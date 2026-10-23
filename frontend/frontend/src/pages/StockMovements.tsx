@@ -1,0 +1,22 @@
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { Alert, Button, Chip, Divider, LinearProgress, MenuItem, Paper, Skeleton, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField, Typography } from '@mui/material';
+import { api, dateTime, errorMessage } from '../api';
+import { EmptyState, PageHeading } from '../shared';
+import type { Page, StockMovement } from '../types';
+
+export default function StockMovements() {
+  const [type, setType] = useState('');
+  const [productId, setProductId] = useState('');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  useEffect(() => setPage(0), [type, productId]);
+  const params = { type: type || undefined, productId: productId ? Number(productId) : undefined, page: page + 1, pageSize };
+  const query = useQuery({ queryKey: ['stock-movements', params], queryFn: async ({ signal }) => (await api.get<Page<StockMovement>>('/stock-movements', { params, signal })).data, placeholderData: keepPreviousData });
+  return <><PageHeading eyebrow="QUẢN LÝ KHO" title="Lịch sử biến động" description="Các phiếu nhập, xuất và kiểm kê đã được ghi nhận trong PostgreSQL." actions={<Button component={Link} to="/inventory" variant="outlined">Quay lại tồn kho</Button>} />
+    <Paper variant="outlined" sx={{ overflow: 'hidden' }}><Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ p: 2.5 }}><TextField select label="Loại giao dịch" value={type} onChange={(event) => setType(event.target.value)} sx={{ minWidth: 220 }}><MenuItem value="">Tất cả giao dịch</MenuItem><MenuItem value="Receipt">Nhập kho</MenuItem><MenuItem value="Issue">Xuất kho</MenuItem><MenuItem value="Adjustment">Điều chỉnh</MenuItem></TextField><TextField label="Lọc theo Product ID" type="number" value={productId} onChange={(event) => setProductId(event.target.value)} slotProps={{ htmlInput: { min: 1, step: 1 } }} /></Stack><Divider /><Stack direction="row" justifyContent="space-between" sx={{ px: 2.5, py: 1.8 }}><Typography fontWeight={700}>Giao dịch kho</Typography><Typography variant="caption" color="text.secondary">{query.data?.totalCount ?? 0} bản ghi</Typography></Stack>{query.isFetching && <LinearProgress />}
+      {query.isError ? <Alert severity="error" sx={{ m: 2.5 }} action={<Button color="inherit" onClick={() => void query.refetch()}>Thử lại</Button>}>{errorMessage(query.error)}</Alert> : query.isLoading ? <Stack sx={{ p: 2 }}>{[1, 2, 3, 4].map((i) => <Skeleton key={i} height={60} />)}</Stack> : query.data?.items.length ? <><TableContainer><Table sx={{ minWidth: 850 }}><TableHead><TableRow><TableCell>THỜI ĐIỂM (UTC)</TableCell><TableCell>SẢN PHẨM</TableCell><TableCell>LOẠI</TableCell><TableCell align="right">THAY ĐỔI</TableCell><TableCell align="right">TRƯỚC → SAU</TableCell><TableCell>LÝ DO</TableCell><TableCell>REQUEST ID</TableCell></TableRow></TableHead><TableBody>{query.data.items.map((movement) => <TableRow hover key={movement.id}><TableCell sx={{ whiteSpace: 'nowrap' }}>{dateTime(movement.createdAt)}</TableCell><TableCell><Typography fontWeight={650}>{movement.productName}</Typography><Typography variant="caption" color="text.secondary">{movement.sku} · ID {movement.productId}</Typography></TableCell><TableCell><Chip size="small" variant="outlined" color={movement.type === 'Receipt' ? 'success' : movement.type === 'Issue' ? 'warning' : 'info'} label={movement.type === 'Receipt' ? 'Nhập' : movement.type === 'Issue' ? 'Xuất' : 'Kiểm kê'} /></TableCell><TableCell align="right">{movement.type === 'Issue' ? '−' : '+'}{movement.quantity.toLocaleString('vi-VN')}</TableCell><TableCell align="right">{movement.quantityBefore ?? '—'} → {movement.quantityAfter ?? '—'}</TableCell><TableCell sx={{ maxWidth: 220, overflowWrap: 'anywhere' }}>{movement.reason || '—'}</TableCell><TableCell sx={{ maxWidth: 170, overflowWrap: 'anywhere' }}>{movement.requestId ?? 'Lịch sử cũ'}</TableCell></TableRow>)}</TableBody></Table></TableContainer><TablePagination component="div" count={query.data.totalCount} page={page} onPageChange={(_, value) => setPage(value)} rowsPerPage={pageSize} onRowsPerPageChange={(event) => { setPageSize(Number(event.target.value)); setPage(0); }} rowsPerPageOptions={[10, 25, 50]} /></> : <EmptyState title="Chưa có giao dịch kho" description="Khi có phiếu nhập, xuất hoặc điều chỉnh, lịch sử sẽ xuất hiện tại đây." />}
+    </Paper>
+  </>;
+}

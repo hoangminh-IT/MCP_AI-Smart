@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.3.0" />
     <ProjectReference Include="..\SmartInventory.Infrastructure\SmartInventory.Infrastructure.csproj" />
   </ItemGroup>
 
@@ -8,6 +9,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>1dcb4022-f6f0-43a4-bacd-034019b89896</UserSecretsId>
   </PropertyGroup>
 
 </Project>

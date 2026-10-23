@@ -1,0 +1,87 @@
+import { useEffect, useRef, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Accordion, AccordionDetails, AccordionSummary, Alert, Avatar, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Drawer, IconButton, List, ListItemButton, ListItemText, Paper, Skeleton, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import AddOutlined from '@mui/icons-material/AddOutlined';
+import EditOutlined from '@mui/icons-material/EditOutlined';
+import DeleteOutline from '@mui/icons-material/DeleteOutline';
+import SendOutlined from '@mui/icons-material/SendOutlined';
+import SmartToyOutlined from '@mui/icons-material/SmartToyOutlined';
+import ExpandMoreOutlined from '@mui/icons-material/ExpandMoreOutlined';
+import CloseOutlined from '@mui/icons-material/CloseOutlined';
+import TimelineOutlined from '@mui/icons-material/TimelineOutlined';
+import StopCircleOutlined from '@mui/icons-material/StopCircleOutlined';
+import { api, dateTime, errorMessage } from '../api';
+import { ConfirmDialog, EmptyState, PageHeading, useToast } from '../shared';
+import { JsonPanel, prettyJson } from '../mcp';
+
+interface ProviderStatus { configured: boolean; provider: string; model: string; reason?: string }
+interface Session { id: string; title: string; createdAt: string; updatedAt: string }
+interface Message { id: string; role: string; content: string; status: string; createdAt: string; toolMetadata?: unknown }
+interface Conversation { session: Session; messages: Message[] }
+interface TraceStep { name: string; startedAt: string; durationMs: number; status: string; executionId?: number; toolName?: string; input?: unknown; output?: unknown }
+interface Reply { sessionId: string; message: Message; trace: TraceStep[] }
+
+function metadata(value: unknown): Record<string, unknown> {
+  if (typeof value === 'string') { try { return metadata(JSON.parse(value)); } catch { return {}; } }
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+function traceSteps(value: unknown): TraceStep[] {
+  return Array.isArray(value) ? value.filter((item): item is TraceStep => item && typeof item === 'object' && typeof item.name === 'string' && typeof item.startedAt === 'string' && typeof item.durationMs === 'number' && typeof item.status === 'string') : [];
+}
+
+export default function AiAssistant() {
+  const client = useQueryClient();
+  const toast = useToast();
+  const [parameters, setParameters] = useSearchParams();
+  const sessionId = parameters.get('session') ?? '';
+  const [draft, setDraft] = useState('');
+  const [title, setTitle] = useState('');
+  const [editor, setEditor] = useState<{ session: Session | null } | null>(null);
+  const [deleting, setDeleting] = useState<Session | null>(null);
+  const [trace, setTrace] = useState<TraceStep[] | null>(null);
+  const [pendingQuestion, setPendingQuestion] = useState('');
+  const controller = useRef<AbortController | null>(null);
+  const end = useRef<HTMLDivElement>(null);
+  const provider = useQuery({ queryKey: ['ai-status'], queryFn: async ({ signal }) => (await api.get<ProviderStatus>('/ai/status', { signal })).data });
+  const sessions = useQuery({ queryKey: ['ai-sessions'], queryFn: async ({ signal }) => (await api.get<Session[]>('/ai/sessions', { signal })).data });
+  const conversation = useQuery({ queryKey: ['ai-conversation', sessionId], enabled: Boolean(sessionId), queryFn: async ({ signal }) => (await api.get<Conversation>(`/ai/sessions/${encodeURIComponent(sessionId)}`, { signal })).data });
+  const saveTitle = useMutation({ mutationFn: async () => (editor?.session ? await api.put<Session>(`/ai/sessions/${editor.session.id}`, { title: title.trim() }) : await api.post<Session>('/ai/sessions', { title: title.trim() })).data, onSuccess: (session) => { setEditor(null); setParameters({ session: session.id }); void client.invalidateQueries({ queryKey: ['ai-sessions'] }); void client.invalidateQueries({ queryKey: ['ai-conversation', session.id] }); toast('Đã lưu cuộc trò chuyện.'); } });
+  const remove = useMutation({ mutationFn: () => api.delete(`/ai/sessions/${deleting!.id}`), onSuccess: () => { if (deleting?.id === sessionId) setParameters({}); setDeleting(null); void client.invalidateQueries({ queryKey: ['ai-sessions'] }); toast('Đã xóa cuộc trò chuyện.'); } });
+  const send = useMutation({
+    mutationFn: async (message: string) => {
+      controller.current = new AbortController();
+      return (await api.post<Reply>(`/ai/sessions/${sessionId}/messages`, { message }, { signal: controller.current.signal, timeout: 130_000 })).data;
+    },
+    onMutate: (message) => setPendingQuestion(message),
+    onSuccess: () => setDraft(''),
+    onSettled: () => {
+      controller.current = null; setPendingQuestion('');
+      void client.invalidateQueries({ queryKey: ['ai-conversation', sessionId] });
+      void client.invalidateQueries({ queryKey: ['ai-sessions'] });
+      void client.invalidateQueries({ queryKey: ['mcp-executions'] });
+    },
+  });
+  useEffect(() => () => controller.current?.abort(), []);
+  useEffect(() => { setDraft(''); send.reset(); }, [sessionId]);
+  useEffect(() => { end.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [conversation.data?.messages.length, send.isPending]);
+  const configured = provider.data?.configured === true && !provider.isError;
+  function openEditor(session: Session | null) { saveTitle.reset(); setTitle(session?.title ?? 'Cuộc trò chuyện mới'); setEditor({ session }); }
+  function submit() { if (!draft.trim() || !configured || !sessionId || send.isPending || conversation.isLoading) return; send.mutate(draft.trim()); }
+
+  return <><PageHeading eyebrow="AI & MCP" title="AI Assistant" description="Hỏi bằng ngôn ngữ tự nhiên. Câu trả lời được tạo từ LLM và dữ liệu MCP thực tế." actions={<Stack direction="row" spacing={1} alignItems="center"><Chip size="small" color={configured ? 'success' : 'default'} variant="outlined" label={provider.isLoading ? 'Đang kiểm tra AI…' : configured ? `${provider.data?.provider} · ${provider.data?.model}` : 'AI chưa sẵn sàng'} /><Button variant="outlined" onClick={() => void provider.refetch()}>Kiểm tra AI</Button></Stack>} />
+    {provider.isError && <Alert severity="error" sx={{ mb: 3 }}>{errorMessage(provider.error)}</Alert>}{provider.data && !provider.data.configured && <Alert severity="info" sx={{ mb: 3 }} action={<Button color="inherit" component={Link} to="/mcp/playground">MCP Direct Test</Button>}>{provider.data.reason || 'Nhà cung cấp LLM chưa được cấu hình ở backend.'} Bạn vẫn có thể kiểm thử MCP trực tiếp.</Alert>}
+    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '250px minmax(0, 1fr)' }, gap: 3, alignItems: 'start' }}><Paper variant="outlined" sx={{ overflow: 'hidden' }}><Box sx={{ p: 2 }}><Button fullWidth variant="contained" startIcon={<AddOutlined />} onClick={() => openEditor(null)} disabled={send.isPending}>Cuộc trò chuyện mới</Button></Box><Divider />{sessions.isLoading ? <Stack spacing={1} sx={{ p: 2 }}><Skeleton /><Skeleton /><Skeleton /></Stack> : sessions.isError ? <Alert severity="error" sx={{ m: 2 }} action={<Button color="inherit" onClick={() => void sessions.refetch()}>Thử lại</Button>}>{errorMessage(sessions.error)}</Alert> : !sessions.data?.length ? <Typography color="text.secondary" variant="body2" sx={{ p: 3, lineHeight: 1.8 }}>Chưa có lịch sử. Tạo một cuộc trò chuyện để bắt đầu.</Typography> : <List disablePadding sx={{ maxHeight: { xs: 220, lg: 570 }, overflow: 'auto', py: 1 }}>{sessions.data.map((item) => <ListItemButton key={item.id} selected={item.id === sessionId} disabled={send.isPending} onClick={() => setParameters({ session: item.id })} sx={{ mx: 1, mb: 0.5, borderRadius: 2, '&.Mui-selected': { bgcolor: '#EAF0FF', color: 'primary.main' } }}><ListItemText primary={item.title} secondary={dateTime(item.updatedAt)} slotProps={{ primary: { fontSize: 13, fontWeight: 650, noWrap: true }, secondary: { fontSize: 10, sx: { mt: 0.7 } } }} /></ListItemButton>)}</List>}</Paper>
+    <Paper variant="outlined" sx={{ overflow: 'hidden' }}><Stack direction="row" spacing={1} justifyContent="space-between" alignItems="center" sx={{ px: 3, py: 2 }}><Stack direction="row" spacing={1.5} alignItems="center"><Avatar sx={{ bgcolor: '#EAF0FF', color: 'primary.main', width: 36, height: 36 }}><SmartToyOutlined fontSize="small" /></Avatar><Box><Typography fontWeight={750} fontSize={14}>{conversation.data?.session.title ?? 'Trợ lý dữ liệu kho'}</Typography><Typography variant="caption" color="text.secondary">LLM → MCP Client C# → MCP Server → PostgreSQL</Typography></Box></Stack>{conversation.data && <Stack direction="row"><Tooltip title="Đổi tên"><IconButton aria-label="Đổi tên cuộc trò chuyện" disabled={send.isPending} onClick={() => openEditor(conversation.data.session)}><EditOutlined fontSize="small" /></IconButton></Tooltip><Tooltip title="Xóa cuộc trò chuyện"><IconButton aria-label="Xóa cuộc trò chuyện" disabled={send.isPending} onClick={() => { remove.reset(); setDeleting(conversation.data.session); }}><DeleteOutline fontSize="small" /></IconButton></Tooltip></Stack>}</Stack><Divider />
+    <Box sx={{ minHeight: 360, height: { xs: 420, xl: 500 }, overflow: 'auto', p: { xs: 2, sm: 3 }, bgcolor: '#FCFDFF' }}>{!sessionId ? <EmptyState title="Hỏi về dữ liệu kho của bạn" description="Tạo hoặc chọn một cuộc trò chuyện. Kết quả, tool đã gọi và trace thực tế được lưu cùng lịch sử." /> : conversation.isLoading ? <Stack spacing={2}><Skeleton height={70} /><Skeleton height={100} /></Stack> : conversation.isError ? <Alert severity="error" action={<Button color="inherit" onClick={() => void conversation.refetch()}>Thử lại</Button>}>{errorMessage(conversation.error)}</Alert> : <Stack spacing={2.5}>{!conversation.data?.messages.length && <EmptyState title="Cuộc trò chuyện đang trống" description={configured ? 'Ví dụ: “Cho tôi danh sách sản phẩm sắp hết.”' : 'AI chưa được cấu hình. Lịch sử và MCP Direct Test vẫn có thể sử dụng.'} />}{conversation.data?.messages.map((message) => {
+      const meta = metadata(message.toolMetadata);
+      const steps = traceSteps(meta.trace);
+      const executionId = typeof meta.executionId === 'number' ? meta.executionId : undefined;
+      if (message.role === 'tool') return <Accordion key={message.id} disableGutters elevation={0} sx={{ border: '1px solid #E3E9F1', borderRadius: '12px !important', '&::before': { display: 'none' } }}><AccordionSummary expandIcon={<ExpandMoreOutlined />}><Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap><Chip label="MCP TOOL" size="small" variant="outlined" /><Typography fontSize={12} fontWeight={650}>{typeof meta.toolName === 'string' ? meta.toolName : 'Tool execution'}</Typography><Chip size="small" label={message.status} color={message.status === 'Succeeded' ? 'success' : 'error'} variant="outlined" />{typeof meta.durationMs === 'number' && <Typography variant="caption" color="text.secondary">{meta.durationMs} ms</Typography>}</Stack></AccordionSummary><AccordionDetails><Stack spacing={2}><JsonPanel title="TOOL METADATA · INPUT" value={meta} /><JsonPanel title="TOOL OUTPUT" value={typeof message.content === 'string' ? prettyJson(message.content) : message.content} />{executionId && <Button component={Link} to={`/mcp/trace?executionId=${executionId}`}>Mở MCP execution #{executionId}</Button>}</Stack></AccordionDetails></Accordion>;
+      return <Box key={message.id} sx={{ maxWidth: '94%', alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start', minWidth: 0 }}><Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.8, textAlign: message.role === 'user' ? 'right' : 'left' }}>{message.role === 'user' ? 'Bạn' : 'AI Assistant'} · {dateTime(message.createdAt)}</Typography>{message.status !== 'Succeeded' ? <Alert severity="warning">Yêu cầu {message.status}. Chưa tạo được câu trả lời hoàn chỉnh.</Alert> : <Paper sx={{ p: 2, bgcolor: message.role === 'user' ? '#3468F6' : '#F0F4FC', color: message.role === 'user' ? 'white' : 'text.primary', borderRadius: 3 }}><Typography fontSize={14} sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', lineHeight: 1.85 }}>{message.content}</Typography></Paper>}{(steps.length > 0 || Boolean(message.toolMetadata)) && <Stack direction="row" spacing={1} sx={{ mt: 1 }}><Button size="small" startIcon={<TimelineOutlined />} disabled={steps.length === 0} onClick={() => setTrace(steps)}>Xem Agent Trace</Button>{message.status !== 'Succeeded' && <Typography variant="caption" color="text.secondary">Kiểm tra trace và trạng thái MCP trước khi gửi lại.</Typography>}</Stack>}</Box>;
+    })}{send.isPending && <Stack direction="row" spacing={1.5} alignItems="center" sx={{ p: 2, bgcolor: '#EAF0FF', borderRadius: 3 }}><CircularProgress size={18} /><Box><Typography fontSize={13} fontWeight={650}>Đang xử lý yêu cầu…</Typography><Typography variant="caption" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>{pendingQuestion}</Typography></Box></Stack>}<div ref={end} /></Stack>}</Box><Divider /><Box component="form" onSubmit={(event) => { event.preventDefault(); submit(); }} sx={{ p: 2.5 }}>{send.isError && <Alert severity="error" sx={{ mb: 2 }}>{errorMessage(send.error)} Kiểm tra lịch sử trước khi gửi lại.</Alert>}<Stack direction="row" spacing={1.5} alignItems="flex-end"><TextField label="Câu hỏi về kho hàng" value={draft} onChange={(event) => setDraft(event.target.value)} multiline minRows={2} maxRows={6} fullWidth disabled={!sessionId || !configured || send.isPending || conversation.isError || conversation.isLoading} slotProps={{ htmlInput: { maxLength: 4000 } }} onKeyDown={(event) => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); submit(); } }} />{send.isPending ? <Button color="error" variant="outlined" startIcon={<StopCircleOutlined />} onClick={() => controller.current?.abort()}>Dừng</Button> : <Button type="submit" variant="contained" startIcon={<SendOutlined />} disabled={!sessionId || !configured || !draft.trim() || conversation.isError || conversation.isLoading}>Gửi</Button>}</Stack><Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>Tối đa 4.000 ký tự · Ctrl/⌘ + Enter để gửi · Mọi thao tác thay đổi tồn kho cần luồng xác nhận riêng.</Typography></Box></Paper></Box>
+    <Dialog open={Boolean(editor)} onClose={saveTitle.isPending ? undefined : () => setEditor(null)} fullWidth maxWidth="sm"><Box component="form" onSubmit={(event) => { event.preventDefault(); saveTitle.mutate(); }}><DialogTitle>{editor?.session ? 'Đổi tên cuộc trò chuyện' : 'Cuộc trò chuyện mới'}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>{saveTitle.isError && <Alert severity="error">{errorMessage(saveTitle.error)}</Alert>}<TextField label="Tên cuộc trò chuyện" autoFocus fullWidth value={title} onChange={(event) => setTitle(event.target.value)} required slotProps={{ htmlInput: { maxLength: 120 } }} /></Stack></DialogContent><DialogActions sx={{ p: 2.5 }}><Button disabled={saveTitle.isPending} onClick={() => setEditor(null)}>Hủy</Button><Button type="submit" variant="contained" disabled={saveTitle.isPending || !title.trim()}>{saveTitle.isPending ? 'Đang lưu…' : 'Lưu cuộc trò chuyện'}</Button></DialogActions></Box></Dialog>
+    <ConfirmDialog open={Boolean(deleting)} title="Xóa cuộc trò chuyện?" description={`Lịch sử “${deleting?.title ?? ''}” và các tin nhắn liên quan sẽ bị xóa.`} confirmLabel="Xóa cuộc trò chuyện" pending={remove.isPending} error={remove.isError ? errorMessage(remove.error) : undefined} onClose={() => setDeleting(null)} onConfirm={() => remove.mutate()} />
+    <Drawer anchor="right" open={trace !== null} onClose={() => setTrace(null)} sx={{ '& .MuiDrawer-paper': { width: { xs: '100%', md: 680 } } }}><Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 3 }}><Box><Typography variant="overline" color="primary">OBSERVED STEPS</Typography><Typography variant="h6">AI Agent Trace</Typography></Box><IconButton aria-label="Đóng Agent Trace" onClick={() => setTrace(null)}><CloseOutlined /></IconButton></Stack><Divider /><Stack spacing={3} sx={{ p: 3 }}>{trace?.map((step, index) => <Box key={`${step.startedAt}-${index}`} sx={{ borderLeft: '3px solid #3468F6', pl: 2 }}><Stack direction="row" spacing={1} justifyContent="space-between" alignItems="center"><Typography fontWeight={750} fontSize={14}>{step.toolName || step.name}</Typography><Chip size="small" label={step.status} color={step.status === 'Succeeded' ? 'success' : 'error'} variant="outlined" /></Stack><Typography variant="caption" color="text.secondary">{dateTime(step.startedAt)} · {step.durationMs} ms{step.executionId ? ` · MCP execution #${step.executionId}` : ''}</Typography>{step.input !== undefined && <JsonPanel title="MCP TOOL INPUT · JSON" value={step.input} />}{step.output !== undefined && <JsonPanel title="MCP TOOL OUTPUT · JSON" value={step.output} />}{step.executionId && <Button size="small" component={Link} to={`/mcp/trace?executionId=${step.executionId}`}>Mở MCP execution #{step.executionId}</Button>}</Box>)}<Alert severity="info">Tool name, JSON, status và duration được lấy từ các kết quả MCP đã thực thi và lưu bởi backend.</Alert></Stack></Drawer>
+  </>;
+}

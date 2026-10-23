@@ -1,192 +1,90 @@
-import { useCallback, useEffect, useState } from 'react';
-import {
-  Alert, Box, Button, Chip, IconButton, InputAdornment, LinearProgress, Paper, Snackbar, Table, TableBody,
-  TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField, Tooltip, Typography,
-} from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import SearchIcon from '@mui/icons-material/Search';
-import ConfirmDialog from '../components/ConfirmDialog';
-import ProductFormDialog from '../components/ProductFormDialog';
-import { errorMessage } from '../api/client';
-import { listCategories } from '../api/categories';
-import { listInventory } from '../api/inventory';
-import { hideProduct, listProducts } from '../api/products';
-import type { Category, Product } from '../types';
-
-const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
+import { useEffect, useRef, useState } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { Alert, Avatar, Box, Button, Checkbox, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Drawer, FormControlLabel, IconButton, InputAdornment, LinearProgress, MenuItem, Paper, Skeleton, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TableSortLabel, TextField, Tooltip, Typography } from '@mui/material';
+import AddOutlined from '@mui/icons-material/AddOutlined';
+import SearchOutlined from '@mui/icons-material/SearchOutlined';
+import EditOutlined from '@mui/icons-material/EditOutlined';
+import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
+import BlockOutlined from '@mui/icons-material/BlockOutlined';
+import FileDownloadOutlined from '@mui/icons-material/FileDownloadOutlined';
+import UploadFileOutlined from '@mui/icons-material/UploadFileOutlined';
+import CloseOutlined from '@mui/icons-material/CloseOutlined';
+import PhotoCameraOutlined from '@mui/icons-material/PhotoCameraOutlined';
+import { allCategories, api, dateTime, errorMessage, money } from '../api';
+import { useAuth } from '../auth';
+import { ConfirmDialog, EmptyState, PageHeading, useDebounced, useToast } from '../shared';
+import type { Category, Page, Product, ProductInput } from '../types';
 
 export default function Products() {
-  const [rows, setRows] = useState<Product[]>([]);
-  const [total, setTotal] = useState(0);
+  const admin = useAuth().user?.role === 'Admin';
+  const client = useQueryClient();
+  const toast = useToast();
+  const [search, setSearch] = useState('');
+  const debounced = useDebounced(search.trim());
+  const [categoryId, setCategoryId] = useState('');
+  const [includeInactive, setIncludeInactive] = useState(false);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [stock, setStock] = useState<Record<number, number>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<Product | null>(null);
-  const [hiding, setHiding] = useState<Product | null>(null);
-  const [hideBusy, setHideBusy] = useState(false);
-  const [toast, setToast] = useState<{ msg: string; severity: 'success' | 'error' } | null>(null);
-
-  const catName = (id: number) => categories.find((c) => c.id === id)?.name ?? `#${id}`;
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const [sortBy, setSortBy] = useState('name');
+  const [descending, setDescending] = useState(false);
+  const [editor, setEditor] = useState<{ product: Product | null } | null>(null);
+  const [deactivating, setDeactivating] = useState<Product | null>(null);
+  const [detailId, setDetailId] = useState<number | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [exportError, setExportError] = useState('');
+  const [exporting, setExporting] = useState(false);
+  useEffect(() => setPage(0), [debounced]);
+  const params = { search: debounced, categoryId: categoryId || undefined, includeInactive, page: page + 1, pageSize, sortBy, descending };
+  const categories = useQuery({ queryKey: ['category-options'], queryFn: ({ signal }) => allCategories(signal) });
+  const query = useQuery({ queryKey: ['products', params], queryFn: async ({ signal }) => (await api.get<Page<Product>>('/products', { params, signal })).data, placeholderData: keepPreviousData });
+  async function refresh() { await Promise.all([client.invalidateQueries({ queryKey: ['products'] }), client.invalidateQueries({ queryKey: ['product'] }), client.invalidateQueries({ queryKey: ['categories'] }), client.invalidateQueries({ queryKey: ['category-options'] })]); }
+  const deactivate = useMutation({ mutationFn: () => api.delete(`/products/${deactivating!.id}`), onSuccess: async () => { setDeactivating(null); toast('Đã ngừng hoạt động sản phẩm.'); await refresh(); } });
+  const importCsv = useMutation({ mutationFn: async () => { if (!importFile) throw new Error('Choose a CSV file.'); const form = new FormData(); form.append('file', importFile); return (await api.post<{ createdCount: number; updatedCount: number }>('/products/import', form)).data; }, onSuccess: async (data) => { setImportOpen(false); setImportFile(null); toast(`Đã nhập CSV: ${data.createdCount} mới, ${data.updatedCount} cập nhật.`); await refresh(); } });
+  function sort(field: string) { setDescending(sortBy === field ? !descending : false); setSortBy(field); setPage(0); }
+  async function exportCsv() {
+    setExporting(true); setExportError('');
     try {
-      const [res, inv] = await Promise.all([listProducts({ search, page, pageSize }), listInventory()]);
-      setRows(res.items);
-      setTotal(res.total);
-      setStock(Object.fromEntries(inv.map((i) => [i.productId, i.quantity])));
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setLoading(false);
-    }
-  }, [search, page, pageSize]);
+      const { data } = await api.get<Blob>('/products/export', { params: { search: debounced, categoryId: categoryId || undefined, includeInactive }, responseType: 'blob' });
+      const url = URL.createObjectURL(data); const link = document.createElement('a'); link.href = url; link.download = 'products.csv'; link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000); toast('Đã xuất danh sách sản phẩm.');
+    } catch (error) { setExportError(errorMessage(error)); }
+    finally { setExporting(false); }
+  }
+  return <><PageHeading eyebrow="QUẢN LÝ KHO" title="Sản phẩm" description="Quản lý danh mục hàng hóa, giá bán và định mức tồn kho." actions={<Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap><Button variant="outlined" startIcon={<FileDownloadOutlined />} disabled={exporting} onClick={() => void exportCsv()}>{exporting ? 'Đang xuất…' : 'Xuất CSV'}</Button>{admin && <><Button variant="outlined" startIcon={<UploadFileOutlined />} onClick={() => { importCsv.reset(); setImportFile(null); setImportOpen(true); }}>Nhập CSV</Button><Button variant="contained" startIcon={<AddOutlined />} onClick={() => setEditor({ product: null })}>Thêm sản phẩm</Button></>}</Stack>} />
+    {exportError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setExportError('')}>{exportError}</Alert>}{categories.isError && <Alert severity="warning" sx={{ mb: 2 }} action={<Button color="inherit" onClick={() => void categories.refetch()}>Thử lại</Button>}>Không tải được bộ lọc danh mục. {errorMessage(categories.error)}</Alert>}
+    <Paper variant="outlined" sx={{ overflow: 'hidden' }}><Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'center' }} sx={{ p: 2.5 }}><TextField placeholder="Tìm tên hoặc mã SKU…" aria-label="Tìm sản phẩm" value={search} onChange={(event) => setSearch(event.target.value)} sx={{ flex: 1, maxWidth: { sm: 370 } }} slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchOutlined fontSize="small" /></InputAdornment> } }} /><TextField select label="Danh mục" value={categoryId} onChange={(event) => { setCategoryId(event.target.value); setPage(0); }} sx={{ minWidth: 200 }}><MenuItem value="">Tất cả danh mục</MenuItem>{categories.data?.map((item) => <MenuItem key={item.id} value={String(item.id)}>{item.name}</MenuItem>)}</TextField><FormControlLabel control={<Checkbox checked={includeInactive} onChange={(_, value) => { setIncludeInactive(value); setPage(0); }} size="small" />} label={<Typography fontSize={12}>Gồm ngừng hoạt động</Typography>} sx={{ ml: { sm: 'auto !important' } }} /></Stack><Divider /><Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2.5, py: 1.8 }}><Typography fontWeight={700} fontSize={14}>Danh sách sản phẩm <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400, ml: 1 }}>({query.data?.totalCount ?? 0})</Box></Typography><Typography variant="caption" color="text.secondary">Dữ liệu theo bộ lọc hiện tại</Typography></Stack>{query.isFetching && <LinearProgress />}
+      {query.isError ? <Alert severity="error" sx={{ m: 2.5 }} action={<Button color="inherit" onClick={() => void query.refetch()}>Thử lại</Button>}>{errorMessage(query.error)}</Alert> : query.isLoading ? <Stack spacing={1} sx={{ p: 3 }}>{[1, 2, 3, 4, 5].map((value) => <Skeleton key={value} height={65} />)}</Stack> : query.data?.items.length ? <><TableContainer><Table sx={{ minWidth: 960 }}><TableHead><TableRow><TableCell><TableSortLabel active={sortBy === 'sku'} direction={descending ? 'desc' : 'asc'} onClick={() => sort('sku')}>MÃ SKU</TableSortLabel></TableCell><TableCell><TableSortLabel active={sortBy === 'name'} direction={descending ? 'desc' : 'asc'} onClick={() => sort('name')}>SẢN PHẨM</TableSortLabel></TableCell><TableCell>DANH MỤC</TableCell><TableCell align="right"><TableSortLabel active={sortBy === 'price'} direction={descending ? 'desc' : 'asc'} onClick={() => sort('price')}>GIÁ BÁN</TableSortLabel></TableCell><TableCell align="right"><TableSortLabel active={sortBy === 'quantity'} direction={descending ? 'desc' : 'asc'} onClick={() => sort('quantity')}>TỒN KHO</TableSortLabel></TableCell><TableCell>TRẠNG THÁI</TableCell><TableCell align="right">THAO TÁC</TableCell></TableRow></TableHead><TableBody>{query.data.items.map((item) => <TableRow hover key={item.id}><TableCell sx={{ fontSize: 12, color: 'text.secondary', whiteSpace: 'nowrap' }}>{item.sku}</TableCell><TableCell><Stack direction="row" spacing={1.5} alignItems="center"><Avatar variant="rounded" src={item.imageUrl || undefined} alt="" sx={{ bgcolor: '#EDF2FC', color: '#6E89C1', width: 40, height: 40, fontSize: 14 }}>{item.name[0]}</Avatar><Button variant="text" onClick={() => setDetailId(item.id)} sx={{ color: 'text.primary', textAlign: 'left', p: 0, minHeight: 'auto', justifyContent: 'start' }}>{item.name}</Button></Stack></TableCell><TableCell sx={{ fontSize: 12, color: 'text.secondary' }}>{item.categoryName}</TableCell><TableCell align="right" sx={{ whiteSpace: 'nowrap', fontWeight: 600, fontSize: 13 }}>{money(item.price)}</TableCell><TableCell align="right"><Typography fontWeight={750} fontSize={14} color={item.quantity < item.minStock ? 'warning.main' : 'text.primary'}>{item.quantity}</Typography><Typography variant="caption" color="text.secondary">Tối thiểu {item.minStock}</Typography></TableCell><TableCell><Chip size="small" label={item.isActive ? 'Hoạt động' : 'Ngừng hoạt động'} sx={{ bgcolor: item.isActive ? '#E6F8F2' : '#F0F2F6', color: item.isActive ? '#0D9473' : '#78869B', fontSize: 11 }} /></TableCell><TableCell align="right" sx={{ whiteSpace: 'nowrap' }}><Tooltip title="Chi tiết"><IconButton size="small" aria-label={`Xem ${item.name}`} onClick={() => setDetailId(item.id)}><VisibilityOutlined fontSize="small" /></IconButton></Tooltip>{admin && <><Tooltip title="Chỉnh sửa"><IconButton size="small" aria-label={`Sửa ${item.name}`} onClick={() => setEditor({ product: item })}><EditOutlined fontSize="small" /></IconButton></Tooltip><Tooltip title="Ngừng hoạt động"><span><IconButton size="small" disabled={!item.isActive} aria-label={`Ngừng hoạt động ${item.name}`} onClick={() => { deactivate.reset(); setDeactivating(item); }}><BlockOutlined fontSize="small" /></IconButton></span></Tooltip></>}</TableCell></TableRow>)}</TableBody></Table></TableContainer><TablePagination component="div" count={query.data.totalCount} page={page} rowsPerPage={pageSize} rowsPerPageOptions={[10, 25, 50]} onPageChange={(_, value) => setPage(value)} onRowsPerPageChange={(event) => { setPageSize(Number(event.target.value)); setPage(0); }} labelRowsPerPage="Số dòng:" labelDisplayedRows={({ from, to, count }) => `${from}–${to} / ${count}`} /></> : <EmptyState title="Chưa có sản phẩm phù hợp" description={search || categoryId ? 'Thay đổi từ khóa hoặc bộ lọc để tìm sản phẩm.' : 'Thêm sản phẩm đầu tiên. Số lượng tồn kho sẽ được quản lý qua nghiệp vụ nhập/xuất kho.'} action={admin && !search && !categoryId && <Button startIcon={<AddOutlined />} onClick={() => setEditor({ product: null })}>Thêm sản phẩm</Button>} />}</Paper>
+    {editor && <ProductEditor product={editor.product} categories={categories.data ?? []} onClose={() => setEditor(null)} onSaved={() => { setEditor(null); void refresh(); }} />}
+    <ProductDetail id={detailId} admin={admin} onClose={() => setDetailId(null)} onEdit={(product) => setEditor({ product })} onUpdated={() => void refresh()} />
+    <ConfirmDialog open={Boolean(deactivating)} title="Ngừng hoạt động sản phẩm?" description={`“${deactivating?.name ?? ''}” sẽ được đánh dấu ngừng hoạt động. Lịch sử và số lượng tồn kho vẫn được lưu.`} confirmLabel="Ngừng hoạt động" pending={deactivate.isPending} error={deactivate.isError ? errorMessage(deactivate.error) : undefined} onClose={() => setDeactivating(null)} onConfirm={() => deactivate.mutate()} />
+    <Dialog open={importOpen} onClose={importCsv.isPending ? undefined : () => setImportOpen(false)} maxWidth="sm" fullWidth><DialogTitle>Nhập sản phẩm từ CSV</DialogTitle><DialogContent><Stack spacing={2.5}><Typography color="text.secondary" variant="body2">Dùng CSV xuất từ hệ thống làm mẫu. SKU đã có sẽ được cập nhật; số lượng tồn kho và trạng thái hoạt động được giữ nguyên.</Typography>{importCsv.isError && <Alert severity="error">{errorMessage(importCsv.error)}</Alert>}<Button component="label" variant="outlined" startIcon={<UploadFileOutlined />}>Chọn file CSV<input hidden type="file" accept=".csv,text/csv" onChange={(event) => setImportFile(event.target.files?.[0] ?? null)} /></Button>{importFile && <Typography fontSize={13}>{importFile.name}</Typography>}<Alert severity="info">Dữ liệu được kiểm tra trước khi ghi. Một dòng không hợp lệ sẽ khiến toàn bộ lần nhập thất bại.</Alert></Stack></DialogContent><DialogActions sx={{ p: 2.5 }}><Button onClick={() => setImportOpen(false)} disabled={importCsv.isPending}>Hủy</Button><Button variant="contained" disabled={!importFile || importCsv.isPending} onClick={() => importCsv.mutate()}>{importCsv.isPending ? 'Đang nhập…' : 'Nhập sản phẩm'}</Button></DialogActions></Dialog>
+  </>;
+}
 
-  useEffect(() => { load(); }, [load]);
+function ProductEditor({ product, categories, onClose, onSaved }: { product: Product | null; categories: Category[]; onClose: () => void; onSaved: () => void }) {
+  const toast = useToast();
+  const [form, setForm] = useState<ProductInput>({ categoryId: product?.categoryId ?? 0, sku: product?.sku ?? '', name: product?.name ?? '', description: product?.description ?? '', price: product?.price ?? 0, costPrice: product?.costPrice ?? 0, minStock: product?.minStock ?? 0, imageUrl: product?.imageUrl ?? '' });
+  const [validation, setValidation] = useState('');
+  const save = useMutation({ mutationFn: () => product ? api.put(`/products/${product.id}`, form) : api.post('/products', form), onSuccess: () => { toast(product ? 'Đã cập nhật sản phẩm.' : 'Đã thêm sản phẩm.'); onSaved(); } });
+  function field<K extends keyof ProductInput>(key: K, value: ProductInput[K]) { setForm((previous) => ({ ...previous, [key]: value })); }
+  function submit(event: FormEvent) { event.preventDefault(); setValidation(''); if (!form.categoryId || !form.sku.trim() || !form.name.trim()) { setValidation('Nhập SKU, tên sản phẩm và chọn danh mục.'); return; } if (![form.price, form.costPrice, form.minStock].every((value) => Number.isFinite(value) && value >= 0) || !Number.isInteger(form.minStock)) { setValidation('Giá không âm và tồn tối thiểu phải là số nguyên không âm.'); return; } save.mutate(); }
+  return <Dialog open onClose={save.isPending ? undefined : onClose} maxWidth="md" fullWidth><Box component="form" onSubmit={submit}><DialogTitle>{product ? 'Chỉnh sửa sản phẩm' : 'Thêm sản phẩm mới'}<Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>Thông tin cơ bản, giá bán và tồn kho tối thiểu</Typography></DialogTitle><DialogContent><Stack spacing={2.5} sx={{ pt: 1 }}>{(validation || save.isError) && <Alert severity="error">{validation || errorMessage(save.error)}</Alert>}{categories.length === 0 && <Alert severity="warning">Cần tạo danh mục trước khi thêm sản phẩm.</Alert>}<Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2.5 }}><TextField label="SKU sản phẩm" autoFocus value={form.sku} onChange={(event) => field('sku', event.target.value)} required slotProps={{ htmlInput: { maxLength: 80 } }} /><TextField label="Tên sản phẩm" value={form.name} onChange={(event) => field('name', event.target.value)} required slotProps={{ htmlInput: { maxLength: 200 } }} /><TextField select label="Danh mục" required value={form.categoryId || ''} onChange={(event) => field('categoryId', Number(event.target.value))}>{categories.map((item) => <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>)}</TextField><TextField label="Tồn kho tối thiểu" type="number" required value={form.minStock} onChange={(event) => field('minStock', Number(event.target.value))} slotProps={{ htmlInput: { min: 0, step: 1 } }} /><TextField label="Giá bán (VND)" type="number" required value={form.price} onChange={(event) => field('price', Number(event.target.value))} slotProps={{ htmlInput: { min: 0, step: 0.01 } }} /><TextField label="Giá vốn (VND)" type="number" required value={form.costPrice} onChange={(event) => field('costPrice', Number(event.target.value))} slotProps={{ htmlInput: { min: 0, step: 0.01 } }} /></Box><TextField label="Mô tả" value={form.description} onChange={(event) => field('description', event.target.value)} multiline minRows={3} slotProps={{ htmlInput: { maxLength: 4000 } }} /><TextField label="Đường dẫn ảnh" value={form.imageUrl} onChange={(event) => field('imageUrl', event.target.value)} helperText="Có thể tải ảnh lên tại màn hình chi tiết sau khi lưu sản phẩm." slotProps={{ htmlInput: { maxLength: 2048 } }} /></Stack></DialogContent><DialogActions sx={{ p: 2.5 }}><Button onClick={onClose} disabled={save.isPending}>Hủy</Button><Button type="submit" variant="contained" disabled={save.isPending || categories.length === 0}>{save.isPending ? 'Đang lưu…' : 'Lưu sản phẩm'}</Button></DialogActions></Box></Dialog>;
+}
 
-  useEffect(() => {
-    listCategories().then(setCategories).catch((e) => setError(errorMessage(e)));
-  }, []);
-
-  // Debounce ô tìm kiếm
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setSearch(searchInput);
-      setPage(0);
-    }, 300);
-    return () => clearTimeout(t);
-  }, [searchInput]);
-
-  const openAdd = () => { setEditing(null); setFormOpen(true); };
-  const openEdit = (p: Product) => { setEditing(p); setFormOpen(true); };
-
-  const onSaved = (msg: string) => {
-    setFormOpen(false);
-    setToast({ msg, severity: 'success' });
-    load();
-  };
-
-  const confirmHide = async () => {
-    if (!hiding) return;
-    setHideBusy(true);
-    try {
-      await hideProduct(hiding.id);
-      setToast({ msg: `Đã ẩn "${hiding.name}"`, severity: 'success' });
-      setHiding(null);
-      // Nếu ẩn dòng cuối của trang cuối thì lùi 1 trang
-      if (rows.length === 1 && page > 0) setPage(page - 1);
-      else load();
-    } catch (e) {
-      setToast({ msg: errorMessage(e), severity: 'error' });
-      setHiding(null);
-    } finally {
-      setHideBusy(false);
-    }
-  };
-
-  return (
-    <>
-      <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-        <TextField
-          size="small"
-          placeholder="Tìm theo tên hoặc SKU…"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          sx={{ flexGrow: 1, maxWidth: 420 }}
-          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
-        />
-        <Box sx={{ flexGrow: 1 }} />
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}>Thêm sản phẩm</Button>
-      </Box>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} action={<Button color="inherit" size="small" onClick={load}>Thử lại</Button>}>
-          {error}
-        </Alert>
-      )}
-
-      <Paper variant="outlined">
-        {loading && <LinearProgress />}
-        <TableContainer>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Mã SKU</TableCell>
-                <TableCell>Tên sản phẩm</TableCell>
-                <TableCell>Danh mục</TableCell>
-                <TableCell align="right">Giá</TableCell>
-                <TableCell align="right">Tồn</TableCell>
-                <TableCell align="right">Thao tác</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {rows.map((p) => {
-                const qty = stock[p.id] ?? 0;
-                return (
-                  <TableRow key={p.id} hover>
-                    <TableCell>{p.sku}</TableCell>
-                    <TableCell>{p.name}</TableCell>
-                    <TableCell>{catName(p.categoryId)}</TableCell>
-                    <TableCell align="right">{vnd(p.price)}</TableCell>
-                    <TableCell align="right">
-                      {qty < p.minStock ? <Chip size="small" color="warning" label={`${qty} • sắp hết`} /> : qty}
-                    </TableCell>
-                    <TableCell align="right">
-                      <Tooltip title="Sửa"><IconButton size="small" onClick={() => openEdit(p)}><EditIcon fontSize="small" /></IconButton></Tooltip>
-                      <Tooltip title="Ẩn"><IconButton size="small" onClick={() => setHiding(p)}><VisibilityOffIcon fontSize="small" /></IconButton></Tooltip>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-              {!loading && rows.length === 0 && !error && (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
-                    <Typography color="text.secondary">
-                      {search ? `Không có sản phẩm khớp "${search}"` : 'Chưa có sản phẩm nào'}
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        <TablePagination
-          component="div"
-          count={total}
-          page={page}
-          rowsPerPage={pageSize}
-          rowsPerPageOptions={[5, 10, 25]}
-          labelRowsPerPage="Số dòng"
-          onPageChange={(_, p) => setPage(p)}
-          onRowsPerPageChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}
-        />
-      </Paper>
-
-      <ProductFormDialog open={formOpen} product={editing} categories={categories} onClose={() => setFormOpen(false)} onSaved={onSaved} />
-
-      <ConfirmDialog
-        open={!!hiding}
-        title="Ẩn sản phẩm"
-        message={`Ẩn "${hiding?.name ?? ''}" khỏi danh sách? Lịch sử kho vẫn được giữ lại.`}
-        confirmText="Ẩn"
-        busy={hideBusy}
-        onConfirm={confirmHide}
-        onClose={() => setHiding(null)}
-      />
-
-      <Snackbar open={!!toast} autoHideDuration={3500} onClose={() => setToast(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        {toast ? <Alert severity={toast.severity} variant="filled" onClose={() => setToast(null)}>{toast.msg}</Alert> : undefined}
-      </Snackbar>
-    </>
-  );
+function ProductDetail({ id, admin, onClose, onEdit, onUpdated }: { id: number | null; admin: boolean; onClose: () => void; onEdit: (product: Product) => void; onUpdated: () => void }) {
+  const toast = useToast();
+  const input = useRef<HTMLInputElement>(null);
+  const [validation, setValidation] = useState('');
+  const query = useQuery({ queryKey: ['product', id], enabled: id !== null, queryFn: async ({ signal }) => (await api.get<Product>(`/products/${id}`, { signal })).data });
+  const upload = useMutation({ mutationFn: async (file: File) => { const form = new FormData(); form.append('file', file); await api.post(`/products/${id}/image`, form); }, onSuccess: () => { toast('Đã cập nhật hình ảnh.'); onUpdated(); void query.refetch(); } });
+  useEffect(() => { setValidation(''); upload.reset(); }, [id]); // A new product starts with a clean upload state.
+  function selectImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
+    setValidation('');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) { setValidation('Chọn ảnh JPG, PNG hoặc WebP tối đa 5 MiB.'); return; }
+    upload.mutate(file);
+  }
+  const item = query.data;
+  return <Drawer anchor="right" open={id !== null} onClose={upload.isPending ? undefined : onClose} sx={{ '& .MuiDrawer-paper': { width: { xs: '100%', sm: 470 } } }}><Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 3 }}><Typography variant="h6">Chi tiết sản phẩm</Typography><IconButton aria-label="Đóng chi tiết" onClick={onClose} disabled={upload.isPending}><CloseOutlined /></IconButton></Stack><Divider />{query.isLoading ? <Stack spacing={2} sx={{ p: 3 }}><Skeleton height={210} /><Skeleton /><Skeleton /></Stack> : query.isError ? <Alert severity="error" sx={{ m: 3 }} action={<Button color="inherit" onClick={() => void query.refetch()}>Thử lại</Button>}>{errorMessage(query.error)}</Alert> : item && <Stack spacing={3} sx={{ p: 3 }}><Box sx={{ bgcolor: '#F1F5FC', borderRadius: 3, height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>{item.imageUrl ? <Box component="img" src={item.imageUrl} alt={item.name} sx={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <Typography color="text.secondary">Chưa có hình ảnh</Typography>}</Box>{admin && <><input ref={input} type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={selectImage} /><Button variant="outlined" startIcon={<PhotoCameraOutlined />} disabled={upload.isPending} onClick={() => input.current?.click()}>{upload.isPending ? 'Đang tải ảnh…' : 'Tải hình ảnh lên'}</Button></>}{(validation || upload.isError) && <Alert severity="error">{validation || errorMessage(upload.error)}</Alert>}<Box><Typography variant="overline" color="text.secondary">{item.sku}</Typography><Typography variant="h5">{item.name}</Typography><Stack direction="row" spacing={1} sx={{ mt: 1.5 }}><Chip label={item.categoryName} size="small" /><Chip label={item.isActive ? 'Hoạt động' : 'Ngừng hoạt động'} color={item.isActive ? 'success' : 'default'} size="small" variant="outlined" /></Stack></Box><Typography color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>{item.description || 'Chưa có mô tả.'}</Typography><Divider /><Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>{[['Giá bán', money(item.price)], ['Giá vốn', money(item.costPrice)], ['Số lượng tồn', String(item.quantity)], ['Tồn tối thiểu', String(item.minStock)]].map(([label, value]) => <Box key={label}><Typography variant="caption" color="text.secondary">{label}</Typography><Typography fontWeight={750} sx={{ mt: 0.5 }}>{value}</Typography></Box>)}</Box><Divider /><Box><Typography variant="caption" color="text.secondary">Ngày tạo: {dateTime(item.createdAt)}</Typography><br /><Typography variant="caption" color="text.secondary">Cập nhật: {dateTime(item.updatedAt)}</Typography></Box>{admin && <Button variant="contained" startIcon={<EditOutlined />} onClick={() => onEdit(item)}>Chỉnh sửa sản phẩm</Button>}</Stack>}</Drawer>;
 }

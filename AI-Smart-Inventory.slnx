@@ -5,4 +5,7 @@
     <Project Path="backend/SmartInventory.Infrastructure/SmartInventory.Infrastructure.csproj" />
     <Project Path="backend/SmartInventory.McpServer/SmartInventory.McpServer.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SmartInventory.IntegrationTests/SmartInventory.IntegrationTests.csproj" />
+  </Folder>
 </Solution>

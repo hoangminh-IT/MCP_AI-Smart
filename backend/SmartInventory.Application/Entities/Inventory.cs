@@ -10,4 +10,7 @@ public class Inventory
 
     [Column("quantity")]
     public int Quantity { get; set; } = 0;
+
+    [Column("updated_at")]
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
