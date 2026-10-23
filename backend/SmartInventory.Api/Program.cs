@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using SmartInventory.Api;
@@ -28,6 +29,8 @@ builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
 builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(
     builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection using user secrets or environment variables.")));
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy());
 builder.Services.AddInventoryAuthentication(builder.Configuration);
 builder.Services.AddInventoryMcpClient(builder.Configuration);
 builder.Services.AddInventoryAi(builder.Configuration);
@@ -132,7 +135,14 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseRateLimiter();
 app.MapControllers();
-app.MapGet("/health/live", () => Results.Ok(new { status = "Healthy" })).DisableRateLimiting();
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    Predicate = registration => registration.Name == "self",
+    ResponseWriter = static (context, report) => context.Response.WriteAsJsonAsync(
+        new { status = report.Status.ToString() }, cancellationToken: context.RequestAborted)
+}).AllowAnonymous().DisableRateLimiting();
+app.MapGet("/health/live", () => Results.Ok(new { status = "Healthy" }))
+    .AllowAnonymous().DisableRateLimiting();
 app.MapGet("/health/ready", async (AppDbContext database, CancellationToken cancellationToken) =>
 {
     try
@@ -147,7 +157,7 @@ app.MapGet("/health/ready", async (AppDbContext database, CancellationToken canc
         app.Logger.LogWarning("Readiness probe failed with {ExceptionType}", exception.GetType().Name);
         return Results.Json(new { status = "Not ready" }, statusCode: 503);
     }
-}).DisableRateLimiting();
+}).AllowAnonymous().DisableRateLimiting();
 app.Run();
 
 public partial class Program;

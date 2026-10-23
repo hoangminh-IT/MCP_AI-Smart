@@ -122,6 +122,8 @@ dotnet run --project backend/SmartInventory.Api/SmartInventory.Api.csproj --laun
 
 The launch profiles use MCP `http://localhost:5206/mcp` and API `http://localhost:5062`. The MCP server provides authenticated Streamable HTTP tools and health endpoints. The API's C# MCP client connects to it on demand; MCP status performs real `ListToolsAsync` discovery and reports connected only when permitted inventory tools are present. Direct MCP tool testing does not require an LLM key.
 
+API health probes are anonymous and return minimal, secret-free JSON: `GET /health` and `/health/live` return `{"status":"Healthy"}` when the host responds; `GET /health/ready` checks PostgreSQL connectivity and pending migrations, returning `{"status":"Ready"}` or HTTP 503 with `{"status":"Not ready"}`. The API intentionally does not map the bare `/` root path, so `GET /` returns 404.
+
 For the AI Chatbot, configure `Llm:Provider=OpenAICompatible`, `Llm:BaseUrl`, `Llm:Model`, and `Llm:ApiKey` in the API project's .NET User Secrets or environment. Supported environment names are `Llm__Provider`, `Llm__BaseUrl`, `Llm__Model`, and `Llm__ApiKey`; for example, a local compatible endpoint can use `http://localhost:1234/v1` and the adapter calls `/chat/completions`. Remote endpoints must use HTTPS. Never put the key in appsettings, source or frontend config. Without a provider key the AI screen reports unavailable, while MCP Direct Test remains usable. No live provider call is claimed until a configured provider has been called successfully.
 
 ## Run the React frontend
