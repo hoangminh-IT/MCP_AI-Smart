@@ -3,7 +3,7 @@ namespace SmartInventory.Api.Mcp;
 public sealed class McpConnectionOptions
 {
     public const string SectionName = "Mcp";
-    public string ServerUrl { get; set; } = "http://localhost:5206/mcp";
+    public string ServerUrl { get; set; } = string.Empty;
     public int TimeoutSeconds { get; set; } = 30;
     public bool UseSharedFirstPartyAudience { get; set; }
 

@@ -1,3 +1,5 @@
+using SmartInventory.Application.Warehouses;
+using SmartInventory.Infrastructure.Warehouses;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.RateLimiting;
@@ -13,16 +15,40 @@ using SmartInventory.Application.Authentication;
 using SmartInventory.Application.Catalog;
 using SmartInventory.Application.Mcp;
 using SmartInventory.Application.Stock;
+using SmartInventory.Application.Suppliers;
+using SmartInventory.Application.Purchasing;
+using SmartInventory.Application.Customers;
+using SmartInventory.Application.Sales;
+using SmartInventory.Application.Reports;
+using SmartInventory.Application.Notifications;
+using SmartInventory.Application.Users;
+using SmartInventory.Application.Settings;
+using SmartInventory.Application.Audit;
 using SmartInventory.Infrastructure.Catalog;
 using SmartInventory.Infrastructure.Authentication;
 using SmartInventory.Infrastructure.Data;
 using SmartInventory.Infrastructure.Mcp;
 using SmartInventory.Infrastructure.Stock;
+using SmartInventory.Infrastructure.Suppliers;
+using SmartInventory.Infrastructure.Purchasing;
+using SmartInventory.Infrastructure.Customers;
+using SmartInventory.Infrastructure.Sales;
+using SmartInventory.Infrastructure.Reports;
+using SmartInventory.Infrastructure.Notifications;
+using SmartInventory.Infrastructure.Users;
+using SmartInventory.Infrastructure.Settings;
+using SmartInventory.Infrastructure.Audit;
+using SmartInventory.Infrastructure.Hosting;
 
 var seed = args.Contains("--seed", StringComparer.Ordinal);
 var bootstrapAdmin = args.Contains("--bootstrap-admin", StringComparer.Ordinal);
 var hostArgs = args.Where(argument => argument is not "--seed" and not "--bootstrap-admin").ToArray();
 var builder = WebApplication.CreateBuilder(hostArgs);
+var localHttpConfiguration = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing");
+var apiHosts = HttpSecurityConfiguration.ApiHosts(builder.Configuration, localHttpConfiguration);
+builder.Configuration["AllowedHosts"] = HttpSecurityConfiguration.HostFilterValue(apiHosts);
+var corsOrigins = HttpSecurityConfiguration.Origins(builder.Configuration, "Cors:AllowedOrigins", localHttpConfiguration,
+    "http://localhost:5173", "http://127.0.0.1:5173");
 
 builder.Logging.ClearProviders();
 builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
@@ -38,7 +64,21 @@ builder.Services.AddScoped<CatalogService>();
 builder.Services.AddScoped<IProductService>(services => services.GetRequiredService<CatalogService>());
 builder.Services.AddScoped<ICategoryService>(services => services.GetRequiredService<CatalogService>());
 builder.Services.AddScoped<IInventoryReadService, InventoryReadService>();
-builder.Services.AddScoped<IStockService, StockService>();
+builder.Services.AddScoped<McpWriteIntentService>();
+builder.Services.AddScoped<IMcpWriteIntentService>(services => services.GetRequiredService<McpWriteIntentService>());
+builder.Services.AddScoped<StockService>();
+builder.Services.AddScoped<IWarehouseService, WarehouseService>();
+builder.Services.AddScoped<IStockService>(services => services.GetRequiredService<StockService>());
+builder.Services.AddScoped<IStockTransactionService>(services => services.GetRequiredService<StockService>());
+builder.Services.AddScoped<ISupplierService, SupplierService>();
+builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
+builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
+builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+builder.Services.AddScoped<ISettingsService, SettingsService>();
+builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IProductCsvService, ProductCsvService>();
 builder.Services.AddScoped<IProductImageService, ProductImageService>();
 builder.Services.AddScoped<DevelopmentCatalogSeeder>();
@@ -67,8 +107,11 @@ builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = 
     context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier);
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
-    .WithOrigins("http://localhost:5173", "http://127.0.0.1:5173")
+    .WithOrigins(corsOrigins)
     .AllowAnyHeader().AllowAnyMethod()));
+var requestLimit = builder.Configuration.GetValue<int?>("RateLimiting:PermitLimit") ?? 120;
+if (requestLimit is < 1 or > 100000)
+    throw new InvalidOperationException("RateLimiting:PermitLimit must be between 1 and 100000.");
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -77,7 +120,7 @@ builder.Services.AddRateLimiter(options =>
             context.User.FindFirstValue("sub") ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 120, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true
+                PermitLimit = requestLimit, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true
             }));
     options.OnRejected = async (context, cancellationToken) =>
     {
@@ -112,6 +155,7 @@ if (seed || bootstrapAdmin)
     return;
 }
 
+app.UseMiddleware<FailedMutationAuditMiddleware>();
 app.UseExceptionHandler();
 app.UseStatusCodePages(async context =>
 {

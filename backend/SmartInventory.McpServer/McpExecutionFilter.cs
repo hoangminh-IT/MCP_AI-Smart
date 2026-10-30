@@ -36,7 +36,17 @@ public static class McpExecutionFilter
             if (userId is null)
                 throw new AppUnauthorizedException("A valid signed-in user is required.");
             McpToolPolicy.ValidateArguments(toolName, input);
-            result = await next(context, cancellationToken);
+            if (McpToolPolicy.IsWrite(toolName))
+            {
+                var proof = services.GetRequiredService<IHttpContextAccessor>().HttpContext?
+                    .Request.Headers["X-Inventory-Confirmation"].ToString() ?? string.Empty;
+                var guarded = await services.GetRequiredService<IMcpWriteGuard>().ExecuteAsync(
+                    userId.Value, toolName, input, proof, async token =>
+                    JsonSerializer.SerializeToElement(await next(context, token), McpJsonUtilities.DefaultOptions), cancellationToken);
+                result = JsonSerializer.Deserialize<CallToolResult>(guarded, McpJsonUtilities.DefaultOptions)
+                    ?? throw new AppValidationException("The confirmed operation returned no result.");
+            }
+            else result = await next(context, cancellationToken);
             if (result.IsError is true)
             {
                 status = McpExecutionStatuses.ToolError;
@@ -52,6 +62,12 @@ public static class McpExecutionFilter
             return result = ErrorResult(errorMessage);
         }
         catch (AppNotFoundException exception)
+        {
+            status = McpExecutionStatuses.ToolError;
+            errorMessage = TrimError(exception.Message);
+            return result = ErrorResult(errorMessage);
+        }
+        catch (Exception exception) when (exception is AppForbiddenException or AppConflictException)
         {
             status = McpExecutionStatuses.ToolError;
             errorMessage = TrimError(exception.Message);

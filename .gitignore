@@ -66,9 +66,8 @@ secrets.json
 backups/
 **/backups/
 
-## Runtime product uploads; keep the empty storage directory in source
+## Runtime product uploads; the API creates this directory when needed
 backend/SmartInventory.Api/App_Data/**
-!backend/SmartInventory.Api/App_Data/.gitkeep
 
 ## Temporary/editor artifacts
 *.tmp

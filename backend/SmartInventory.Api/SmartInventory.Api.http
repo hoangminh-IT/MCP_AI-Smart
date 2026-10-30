@@ -1,6 +1,9 @@
 @SmartInventory.Api_HostAddress = http://localhost:5062
 
-GET {{SmartInventory.Api_HostAddress}}/weatherforecast/
+### API liveness (does not query PostgreSQL)
+GET {{SmartInventory.Api_HostAddress}}/health/live
 Accept: application/json
 
-###
+### PostgreSQL connectivity and migration readiness
+GET {{SmartInventory.Api_HostAddress}}/health/ready
+Accept: application/json

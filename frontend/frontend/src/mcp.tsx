@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Box, Button, Chip, Divider, Paper, Stack, Typography } from '@mui/material';
+import { Alert, Box, Button, Chip, Divider, Paper, Stack, Tooltip, Typography } from '@mui/material';
 import ContentCopyOutlined from '@mui/icons-material/ContentCopyOutlined';
 import { api, dateTime } from './api';
 import { useToast } from './shared';
@@ -34,15 +34,15 @@ export function isWriteTool(tool: McpTool) {
   return tool.annotations?.readOnlyHint === false || tool.annotations?.destructiveHint === true;
 }
 export function ToolPolicy({ tool }: { tool: McpTool }) {
-  return tool.annotations?.readOnlyHint === true
-    ? <Chip size="small" label="READ ONLY" sx={{ bgcolor: '#E6F8F2', color: '#0D9473', fontSize: 10 }} />
-    : isWriteTool(tool) ? <Chip size="small" label="WRITE · CẦN XÁC NHẬN" color="warning" /> : null;
+  return isWriteTool(tool) ? <Tooltip title="Thao tác chỉ thực thi sau khi bạn xem lại và xác nhận đề nghị."><Chip size="small" label="Thay đổi dữ liệu" variant="outlined" sx={{ color: 'text.secondary', borderColor: 'divider', bgcolor: 'action.hover', fontSize: 11 }} /></Tooltip> : tool.annotations?.readOnlyHint === true
+    ? <Chip size="small" label="Chỉ xem dữ liệu" variant="outlined" sx={{ color: 'text.secondary', borderColor: 'divider', fontSize: 11 }} />
+    : null;
 }
 export function JsonPanel({ title, value, code = false }: { title: string; value: unknown; code?: boolean }) {
   const toast = useToast();
   const [copyError, setCopyError] = useState(false);
   const text = code && typeof value === 'string' ? value : prettyJson(value);
-  return <Paper variant="outlined" sx={{ overflow: 'hidden' }}><Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 2.5, py: 1.5 }}><Typography fontSize={12} fontWeight={750} letterSpacing={0.5}>{title}</Typography><Button size="small" startIcon={<ContentCopyOutlined fontSize="small" />} onClick={() => { if (!navigator.clipboard) { setCopyError(true); return; } void navigator.clipboard.writeText(text).then(() => { setCopyError(false); toast('Đã sao chép nội dung.'); }).catch(() => setCopyError(true)); }}>Sao chép</Button></Stack><Divider />{copyError && <Alert severity="info">Trình duyệt không cho phép sao chép. Bạn có thể chọn văn bản bên dưới.</Alert>}<Box component="pre" sx={{ m: 0, p: 2.5, bgcolor: '#F8FAFE', color: '#304260', overflow: 'auto', maxHeight: 440, fontSize: 12, lineHeight: 1.8, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>{text}</Box></Paper>;
+  return <Paper variant="outlined" sx={{ overflow: 'hidden', minWidth: 0 }}><Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ px: 2, py: 1 }}><Typography fontSize={11} fontWeight={700} color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>{title}</Typography><Button size="small" startIcon={<ContentCopyOutlined fontSize="small" />} onClick={() => { if (!navigator.clipboard) { setCopyError(true); return; } void navigator.clipboard.writeText(text).then(() => { setCopyError(false); toast('Đã sao chép nội dung.'); }).catch(() => setCopyError(true)); }} sx={{ flexShrink: 0 }}>Sao chép</Button></Stack><Divider />{copyError && <Alert severity="info">Trình duyệt không cho phép sao chép. Bạn có thể chọn văn bản bên dưới.</Alert>}<Box component="pre" sx={{ m: 0, p: 2, bgcolor: 'background.default', color: 'text.primary', overflow: 'auto', maxHeight: 440, fontSize: 12, lineHeight: 1.7, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>{text}</Box></Paper>;
 }
 export function ExecutionResult({ execution }: { execution: McpExecution }) {
   return <Stack spacing={2}><Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap><Chip size="small" color={execution.isError ? 'error' : 'success'} label={execution.isError ? execution.status === 'ToolError' ? 'Tool báo lỗi' : 'Thực thi thất bại' : 'Thực thi thành công'} />{execution.status && <Chip size="small" variant="outlined" label={execution.status} />}<Typography variant="caption" color="text.secondary">#{execution.executionId} · {execution.durationMs} ms · {dateTime(execution.createdAt)}</Typography></Stack>{execution.isError && <Alert severity="error">{execution.errorMessage || 'MCP execution trả về isError=true. Xem kết quả giao thức bên dưới.'}</Alert>}<JsonPanel title="MCP RESULT · JSON" value={execution.output} /></Stack>;

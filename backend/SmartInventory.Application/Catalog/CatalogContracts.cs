@@ -6,6 +6,7 @@ public sealed record PagedResult<T>(IReadOnlyList<T> Items, int TotalCount, int 
 
 public sealed class CatalogQuery
 {
+    public int? WarehouseId { get; set; }
     public string? Search { get; set; }
     public int? CategoryId { get; set; }
     public int Page { get; set; } = 1;
@@ -43,7 +44,7 @@ public sealed class ProductRequest
     public decimal Price { get; set; }
     [Range(typeof(decimal), "0", "9999999999999999.99", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
     public decimal CostPrice { get; set; }
-    [Range(0, int.MaxValue)] public int MinStock { get; set; } = 10;
+    [Range(0, int.MaxValue)] public int? MinStock { get; set; }
     [StringLength(2048)] public string? ImageUrl { get; set; }
 }
 
@@ -68,7 +69,7 @@ public sealed record ProductImageResult(string ImageUrl);
 public interface IProductService
 {
     Task<PagedResult<ProductDto>> GetProductsAsync(CatalogQuery query, CancellationToken cancellationToken);
-    Task<ProductDto> GetProductAsync(int id, CancellationToken cancellationToken);
+    Task<ProductDto> GetProductAsync(int id, CancellationToken cancellationToken, int? warehouseId = null);
     Task<ProductDto> CreateProductAsync(ProductRequest request, CancellationToken cancellationToken);
     Task<ProductDto> UpdateProductAsync(int id, ProductRequest request, CancellationToken cancellationToken);
     Task DeactivateProductAsync(int id, CancellationToken cancellationToken);

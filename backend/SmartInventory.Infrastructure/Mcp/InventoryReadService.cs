@@ -4,19 +4,21 @@ using SmartInventory.Application.Common;
 using SmartInventory.Application.Mcp;
 using SmartInventory.Infrastructure.Catalog;
 using SmartInventory.Infrastructure.Data;
+using SmartInventory.Infrastructure.Warehouses;
 
 namespace SmartInventory.Infrastructure.Mcp;
 
 public sealed class InventoryReadService(AppDbContext database) : IInventoryReadService
 {
-    private IQueryable<ProductDto> ActiveProducts => CatalogQueryFactory.Products(database).Where(product => product.IsActive);
+    private IQueryable<ProductDto> ActiveProducts(int? warehouseId) => CatalogQueryFactory.Products(database, warehouseId).Where(product => product.IsActive);
 
-    public async Task<ProductDto> GetProductBySkuAsync(string sku, CancellationToken cancellationToken)
+    public async Task<ProductDto> GetProductBySkuAsync(string sku, CancellationToken cancellationToken, int? warehouseId = null)
     {
+        await WarehouseAccess.ReadAsync(database, warehouseId, cancellationToken);
         if (string.IsNullOrWhiteSpace(sku) || sku.Trim().Length > 80)
             throw new AppValidationException("sku must contain between 1 and 80 characters.");
         var normalized = sku.Trim().ToUpperInvariant();
-        var products = await ActiveProducts.Where(product => product.Sku.ToUpper() == normalized)
+        var products = await ActiveProducts(warehouseId).Where(product => product.Sku.ToUpper() == normalized)
             .OrderBy(product => product.Id).Take(2).ToListAsync(cancellationToken);
         if (products.Count > 1)
             throw new AppConflictException("More than one active product matches this SKU. Resolve the duplicate SKUs.");
@@ -24,21 +26,26 @@ public sealed class InventoryReadService(AppDbContext database) : IInventoryRead
     }
 
     public async Task<PagedResult<ProductDto>> GetLowStockProductsAsync(int? threshold, int page, int pageSize,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, int? warehouseId = null)
     {
+        await WarehouseAccess.ReadAsync(database, warehouseId, cancellationToken);
         if (threshold is < 0)
             throw new AppValidationException("threshold must be zero or greater, or omitted to use each product's minimum stock.");
-        var products = threshold.HasValue ? ActiveProducts.Where(product => product.Quantity < threshold.Value)
-            : ActiveProducts.Where(product => product.Quantity < product.MinStock);
+        var products = threshold.HasValue ? ActiveProducts(warehouseId).Where(product => product.Quantity < threshold.Value)
+            : ActiveProducts(warehouseId).Where(product => product.Quantity < product.MinStock);
         return await PageProductsAsync(products, page, pageSize, cancellationToken);
     }
 
-    public Task<PagedResult<ProductDto>> GetOutOfStockProductsAsync(int page, int pageSize, CancellationToken cancellationToken) =>
-        PageProductsAsync(ActiveProducts.Where(product => product.Quantity == 0), page, pageSize, cancellationToken);
-
-    public async Task<InventorySummaryDto> GetInventorySummaryAsync(CancellationToken cancellationToken)
+    public async Task<PagedResult<ProductDto>> GetOutOfStockProductsAsync(int page, int pageSize, CancellationToken cancellationToken, int? warehouseId = null)
     {
-        var summary = await ActiveProducts.GroupBy(_ => 1).Select(group => new
+        await WarehouseAccess.ReadAsync(database, warehouseId, cancellationToken);
+        return await PageProductsAsync(ActiveProducts(warehouseId).Where(product => product.Quantity == 0), page, pageSize, cancellationToken);
+    }
+
+    public async Task<InventorySummaryDto> GetInventorySummaryAsync(CancellationToken cancellationToken, int? warehouseId = null)
+    {
+        var warehouse = await WarehouseAccess.ReadAsync(database, warehouseId, cancellationToken);
+        var summary = await ActiveProducts(warehouseId).GroupBy(_ => 1).Select(group => new
         {
             TotalProducts = group.Count(), TotalQuantity = group.Sum(product => (long)product.Quantity),
             CostValue = group.Sum(product => product.CostPrice * product.Quantity),
@@ -47,33 +54,38 @@ public sealed class InventoryReadService(AppDbContext database) : IInventoryRead
             OutOfStock = group.Count(product => product.Quantity == 0)
         }).SingleOrDefaultAsync(cancellationToken);
         var categories = await database.Categories.CountAsync(cancellationToken);
-        var movements = await database.StockMovements.LongCountAsync(cancellationToken);
+        var movements = await database.StockMovements.LongCountAsync(item => !warehouseId.HasValue || item.WarehouseId == warehouseId.Value, cancellationToken);
         return new(summary?.TotalProducts ?? 0, categories, summary?.TotalQuantity ?? 0,
             summary?.CostValue ?? 0, summary?.RetailValue ?? 0, summary?.LowStock ?? 0,
-            summary?.OutOfStock ?? 0, movements, DateTime.UtcNow);
+            summary?.OutOfStock ?? 0, movements, DateTime.UtcNow, warehouseId, warehouse?.Code, warehouse?.Name);
     }
 
     public async Task<PagedResult<StockMovementDto>> GetStockMovementHistoryAsync(int? productId, int page,
-        int pageSize, CancellationToken cancellationToken)
+        int pageSize, CancellationToken cancellationToken, int? warehouseId = null)
     {
+        await WarehouseAccess.ReadAsync(database, warehouseId, cancellationToken);
         ValidatePage(page, pageSize);
         if (productId is <= 0) throw new AppValidationException("productId must be positive when supplied.");
         var query = database.StockMovements.AsNoTracking().AsQueryable();
+        if (warehouseId.HasValue) query = query.Where(movement => movement.WarehouseId == warehouseId.Value);
         if (productId.HasValue) query = query.Where(movement => movement.ProductId == productId.Value);
         var count = await query.CountAsync(cancellationToken);
         var items = await (from movement in query
             join product in database.Products.AsNoTracking() on movement.ProductId equals product.Id
+            join warehouse in database.Warehouses.AsNoTracking() on movement.WarehouseId equals warehouse.Id
             orderby movement.CreatedAt descending, movement.Id descending
             select new StockMovementDto(movement.Id, product.Id, product.Sku, product.Name,
                 movement.Type, movement.Quantity, movement.CreatedAt, movement.QuantityBefore, movement.QuantityAfter,
-                movement.Reason, movement.CreatedBy, movement.RequestId, movement.ReferenceType, movement.ReferenceId))
+                movement.Reason, movement.CreatedBy, movement.RequestId, movement.ReferenceType, movement.ReferenceId,
+                movement.WarehouseId, warehouse.Code, warehouse.Name, movement.WarehouseQuantityBefore, movement.WarehouseQuantityAfter))
             .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(cancellationToken);
         return new(items, count, page, pageSize);
     }
 
-    public async Task<IReadOnlyList<CategoryInventoryDto>> GetCategorySummaryAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<CategoryInventoryDto>> GetCategorySummaryAsync(CancellationToken cancellationToken, int? warehouseId = null)
     {
-        var products = ActiveProducts;
+        await WarehouseAccess.ReadAsync(database, warehouseId, cancellationToken);
+        var products = ActiveProducts(warehouseId);
         return await database.Categories.AsNoTracking().OrderBy(category => category.Name).ThenBy(category => category.Id)
             .Select(category => new CategoryInventoryDto(category.Id, category.Name,
                 products.Count(product => product.CategoryId == category.Id),

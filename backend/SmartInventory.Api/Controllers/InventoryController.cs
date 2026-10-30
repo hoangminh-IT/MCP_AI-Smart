@@ -19,10 +19,10 @@ public sealed class InventoryController(IStockService stock) : ControllerBase
         stock.GetInventoryAsync(query, cancellationToken);
 
     [HttpGet("summary")]
-    public Task<InventorySummaryDto> Summary(CancellationToken cancellationToken) => stock.GetSummaryAsync(cancellationToken);
+    public Task<InventorySummaryDto> Summary(CancellationToken cancellationToken, [FromQuery] int? warehouseId = null) => stock.GetSummaryAsync(cancellationToken, warehouseId);
 
     [HttpGet("{productId:int}")]
-    public Task<ProductDto> Get(int productId, CancellationToken cancellationToken) => stock.GetInventoryProductAsync(productId, cancellationToken);
+    public Task<ProductDto> Get(int productId, CancellationToken cancellationToken, [FromQuery] int? warehouseId = null) => stock.GetInventoryProductAsync(productId, cancellationToken, warehouseId);
 
     [HttpPost("receipts")]
     public Task<StockOperationDto> Receipt(StockRequest request, CancellationToken cancellationToken) =>
@@ -36,6 +36,13 @@ public sealed class InventoryController(IStockService stock) : ControllerBase
     [Authorize(Roles = "Admin")]
     public Task<StockOperationDto> Adjust(StockRequest request, CancellationToken cancellationToken) =>
         stock.AdjustAsync(CurrentUserId(), request, cancellationToken);
+
+    [HttpPost("transfers")]
+    public Task<StockTransferDto> Transfer(StockTransferRequest request, CancellationToken cancellationToken) => stock.TransferAsync(CurrentUserId(), request, cancellationToken);
+    [HttpGet("transfers")]
+    public Task<PagedResult<StockTransferDto>> Transfers([FromQuery] StockTransferQuery query, CancellationToken cancellationToken) => stock.GetTransfersAsync(query, cancellationToken);
+    [HttpGet("transfers/{id:guid}")]
+    public Task<StockTransferDto> TransferDetail(Guid id, CancellationToken cancellationToken) => stock.GetTransferAsync(id, cancellationToken);
 
     private int CurrentUserId() => int.TryParse(User.FindFirstValue("sub"), NumberStyles.None,
         CultureInfo.InvariantCulture, out var id) && id > 0 ? id : throw new AppUnauthorizedException("A valid user identity is required.");

@@ -1,23 +1,70 @@
 using Microsoft.EntityFrameworkCore;
+using SmartInventory.Application.Common;
 using SmartInventory.Application.Entities;
 
 namespace SmartInventory.Infrastructure.Data;
 
-public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
+public sealed partial class AppDbContext(DbContextOptions<AppDbContext> options, ICurrentActor? currentActor = null)
     : DbContext(options)
 {
+    private readonly ICurrentActor? actor = currentActor;
+
+    public DbSet<ApplicationSettings> ApplicationSettings => Set<ApplicationSettings>();
+    public DbSet<UserPreferences> UserPreferences => Set<UserPreferences>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<User> Users => Set<User>();
+    public DbSet<RefreshSession> RefreshSessions => Set<RefreshSession>();
     public DbSet<Category> Categories => Set<Category>();
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+    public DbSet<PurchaseOrderItem> PurchaseOrderItems => Set<PurchaseOrderItem>();
+    public DbSet<PurchaseOrderReceipt> PurchaseOrderReceipts => Set<PurchaseOrderReceipt>();
+    public DbSet<PurchaseOrderReceiptItem> PurchaseOrderReceiptItems => Set<PurchaseOrderReceiptItem>();
+    public DbSet<SalesOrder> SalesOrders => Set<SalesOrder>();
+    public DbSet<SalesOrderItem> SalesOrderItems => Set<SalesOrderItem>();
+    public DbSet<SalesOrderFulfillment> SalesOrderFulfillments => Set<SalesOrderFulfillment>();
+    public DbSet<SalesOrderFulfillmentItem> SalesOrderFulfillmentItems => Set<SalesOrderFulfillmentItem>();
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<Warehouse> Warehouses => Set<Warehouse>();
+    public DbSet<WarehouseInventory> WarehouseInventories => Set<WarehouseInventory>();
+    public DbSet<StockTransfer> StockTransfers => Set<StockTransfer>();
     public DbSet<Inventory> Inventories => Set<Inventory>();
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<McpToolExecutionLog> McpToolExecutionLogs => Set<McpToolExecutionLog>();
+    public DbSet<McpWriteIntent> McpWriteIntents => Set<McpWriteIntent>();
     public DbSet<AiChatSession> AiChatSessions => Set<AiChatSession>();
     public DbSet<AiChatMessage> AiChatMessages => Set<AiChatMessage>();
+    public DbSet<UserNotification> UserNotifications => Set<UserNotification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.ConfigureSettingsAndAudit();
+        modelBuilder.ConfigurePurchaseOrders();
+        modelBuilder.ConfigureSalesOrders();
+        modelBuilder.ConfigureMcpWrites();
+        modelBuilder.ConfigureRefreshSessions();
+        modelBuilder.ConfigureWarehouses();
+
+        modelBuilder.Entity<UserNotification>(notification =>
+        {
+            notification.Property(item => item.DeduplicationKey).HasMaxLength(160);
+            notification.Property(item => item.Type).HasMaxLength(40);
+            notification.Property(item => item.Title).HasMaxLength(160);
+            notification.Property(item => item.Message).HasMaxLength(1000);
+            notification.Property(item => item.TargetType).HasMaxLength(40);
+            notification.Property(item => item.TargetId).HasMaxLength(100);
+            notification.Property(item => item.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            notification.HasIndex(item => new { item.UserId, item.DeduplicationKey }).IsUnique();
+            notification.HasIndex(item => new { item.UserId, item.ReadAt, item.CreatedAt });
+            notification.HasOne<User>().WithMany().HasForeignKey(item => item.UserId).OnDelete(DeleteBehavior.Restrict);
+            notification.ToTable("user_notifications", table =>
+            {
+                table.HasCheckConstraint("CK_user_notifications_type", "type IN ('LowStock','OutOfStock','PurchaseOrder','SalesOrder')");
+                table.HasCheckConstraint("CK_user_notifications_target", "(target_type IS NULL AND target_id IS NULL) OR (target_type IS NOT NULL AND target_id IS NOT NULL)");
+            });
+        });
 
         modelBuilder.Entity<User>(user =>
         {
@@ -34,6 +81,26 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         {
             category.Property(item => item.Description).HasDefaultValue(string.Empty);
             category.Property(item => item.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
+        modelBuilder.Entity<Supplier>(supplier =>
+        {
+            supplier.HasIndex(item => item.Code).IsUnique();
+            supplier.HasIndex(item => item.Name);
+            supplier.HasIndex(item => item.IsActive);
+            supplier.Property(item => item.IsActive).HasDefaultValue(true);
+            supplier.Property(item => item.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            supplier.Property(item => item.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
+
+        modelBuilder.Entity<Customer>(customer =>
+        {
+            customer.HasIndex(item => item.Code).IsUnique();
+            customer.HasIndex(item => item.Name);
+            customer.HasIndex(item => item.IsActive);
+            customer.Property(item => item.IsActive).HasDefaultValue(true);
+            customer.Property(item => item.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            customer.Property(item => item.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
 
         modelBuilder.Entity<Product>(product =>

@@ -23,10 +23,11 @@ public sealed class InventoryTools
         IProductService products,
         [Description("Page number, starting at 1."), Range(1, int.MaxValue)] int page = 1,
         [Description("Products per page, between 1 and 100."), Range(1, 100)] int pageSize = 10,
+        [Range(1, int.MaxValue), Description("Optional warehouse scope. Omit for aggregate inventory across warehouses.")] int? warehouseId = null,
         CancellationToken cancellationToken = default) => SafeAsync(async () =>
     {
         ValidatePaging(page, pageSize);
-        return await products.GetProductsAsync(new CatalogQuery { Page = page, PageSize = pageSize }, cancellationToken);
+        return await products.GetProductsAsync(new CatalogQuery { WarehouseId = warehouseId, Page = page, PageSize = pageSize }, cancellationToken);
     });
 
     [Authorize(Roles = ReaderRoles)]
@@ -36,10 +37,11 @@ public sealed class InventoryTools
     public static Task<ProductDto> GetProductById(
         IProductService products,
         [Description("Positive product identifier."), Range(1, int.MaxValue)] int id,
+        [Range(1, int.MaxValue), Description("Optional warehouse scope. Omit for aggregate inventory across warehouses.")] int? warehouseId = null,
         CancellationToken cancellationToken = default) => SafeAsync(async () =>
     {
         if (id <= 0) throw new AppValidationException("id must be positive.");
-        var product = await products.GetProductAsync(id, cancellationToken);
+        var product = await products.GetProductAsync(id, cancellationToken, warehouseId);
         if (!product.IsActive) throw new AppNotFoundException("Product was not found.");
         return product;
     });
@@ -51,11 +53,12 @@ public sealed class InventoryTools
     public static Task<ProductDto> GetProductBySku(
         IInventoryReadService inventory,
         [Description("Nonempty product SKU, up to 80 characters."), Required, MaxLength(80)] string sku,
+        [Range(1, int.MaxValue), Description("Optional warehouse scope. Omit for aggregate inventory across warehouses.")] int? warehouseId = null,
         CancellationToken cancellationToken = default) => SafeAsync(async () =>
     {
         if (string.IsNullOrWhiteSpace(sku) || sku.Length > 80)
             throw new AppValidationException("sku must contain 1 to 80 characters.");
-        return await inventory.GetProductBySkuAsync(sku.Trim(), cancellationToken);
+        return await inventory.GetProductBySkuAsync(sku.Trim(), cancellationToken, warehouseId);
     });
 
     [Authorize(Roles = ReaderRoles)]
@@ -67,6 +70,7 @@ public sealed class InventoryTools
         [Description("Nonempty product name or SKU search text, up to 200 characters."), Required, MaxLength(200)] string search,
         [Description("Page number, starting at 1."), Range(1, int.MaxValue)] int page = 1,
         [Description("Products per page, between 1 and 100."), Range(1, 100)] int pageSize = 10,
+        [Range(1, int.MaxValue), Description("Optional warehouse scope. Omit for aggregate inventory across warehouses.")] int? warehouseId = null,
         CancellationToken cancellationToken = default) => SafeAsync(async () =>
     {
         if (string.IsNullOrWhiteSpace(search) || search.Length > 200)
@@ -74,7 +78,7 @@ public sealed class InventoryTools
         ValidatePaging(page, pageSize);
         return await products.GetProductsAsync(new CatalogQuery
         {
-            Search = search.Trim(), Page = page, PageSize = pageSize
+            WarehouseId = warehouseId, Search = search.Trim(), Page = page, PageSize = pageSize
         }, cancellationToken);
     });
 
@@ -87,13 +91,14 @@ public sealed class InventoryTools
         [Description("Positive category identifier."), Range(1, int.MaxValue)] int categoryId,
         [Description("Page number, starting at 1."), Range(1, int.MaxValue)] int page = 1,
         [Description("Products per page, between 1 and 100."), Range(1, 100)] int pageSize = 10,
+        [Range(1, int.MaxValue), Description("Optional warehouse scope. Omit for aggregate inventory across warehouses.")] int? warehouseId = null,
         CancellationToken cancellationToken = default) => SafeAsync(async () =>
     {
         if (categoryId <= 0) throw new AppValidationException("categoryId must be positive.");
         ValidatePaging(page, pageSize);
         return await products.GetProductsAsync(new CatalogQuery
         {
-            CategoryId = categoryId, Page = page, PageSize = pageSize
+            WarehouseId = warehouseId, CategoryId = categoryId, Page = page, PageSize = pageSize
         }, cancellationToken);
     });
 
@@ -106,11 +111,12 @@ public sealed class InventoryTools
         [Description("Optional nonnegative threshold. Products must have quantity strictly less than this number."), Range(0, int.MaxValue)] int? threshold = null,
         [Description("Page number, starting at 1."), Range(1, int.MaxValue)] int page = 1,
         [Description("Products per page, between 1 and 100."), Range(1, 100)] int pageSize = 10,
+        [Range(1, int.MaxValue), Description("Optional warehouse scope. Omit for aggregate inventory across warehouses.")] int? warehouseId = null,
         CancellationToken cancellationToken = default) => SafeAsync(async () =>
     {
         if (threshold < 0) throw new AppValidationException("threshold must not be negative.");
         ValidatePaging(page, pageSize);
-        return await inventory.GetLowStockProductsAsync(threshold, page, pageSize, cancellationToken);
+        return await inventory.GetLowStockProductsAsync(threshold, page, pageSize, cancellationToken, warehouseId);
     });
 
     [Authorize(Roles = ReaderRoles)]
@@ -121,10 +127,11 @@ public sealed class InventoryTools
         IInventoryReadService inventory,
         [Description("Page number, starting at 1."), Range(1, int.MaxValue)] int page = 1,
         [Description("Products per page, between 1 and 100."), Range(1, 100)] int pageSize = 10,
+        [Range(1, int.MaxValue), Description("Optional warehouse scope. Omit for aggregate inventory across warehouses.")] int? warehouseId = null,
         CancellationToken cancellationToken = default) => SafeAsync(async () =>
     {
         ValidatePaging(page, pageSize);
-        return await inventory.GetOutOfStockProductsAsync(page, pageSize, cancellationToken);
+        return await inventory.GetOutOfStockProductsAsync(page, pageSize, cancellationToken, warehouseId);
     });
 
     [Authorize(Roles = ReaderRoles)]
@@ -132,8 +139,9 @@ public sealed class InventoryTools
         Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Get active-product counts, total quantity, inventory cost and retail valuation, stock warning counts and a UTC observation timestamp.")]
     public static Task<InventorySummaryDto> GetInventorySummary(
-        IInventoryReadService inventory, CancellationToken cancellationToken = default) =>
-        SafeAsync(() => inventory.GetInventorySummaryAsync(cancellationToken));
+        IInventoryReadService inventory, [Range(1, int.MaxValue), Description("Optional warehouse scope. Omit for aggregate inventory across warehouses.")] int? warehouseId = null,
+        CancellationToken cancellationToken = default) =>
+        SafeAsync(() => inventory.GetInventorySummaryAsync(cancellationToken, warehouseId));
 
     [Authorize(Roles = ReaderRoles)]
     [McpServerTool(Name = "GetStockMovementHistory", ReadOnly = true, Destructive = false,
@@ -144,11 +152,12 @@ public sealed class InventoryTools
         [Description("Optional positive product identifier."), Range(1, int.MaxValue)] int? productId = null,
         [Description("Page number, starting at 1."), Range(1, int.MaxValue)] int page = 1,
         [Description("Movements per page, between 1 and 100."), Range(1, 100)] int pageSize = 10,
+        [Range(1, int.MaxValue), Description("Optional warehouse scope. Omit for aggregate inventory across warehouses.")] int? warehouseId = null,
         CancellationToken cancellationToken = default) => SafeAsync(async () =>
     {
         if (productId <= 0) throw new AppValidationException("productId must be positive when provided.");
         ValidatePaging(page, pageSize);
-        return await inventory.GetStockMovementHistoryAsync(productId, page, pageSize, cancellationToken);
+        return await inventory.GetStockMovementHistoryAsync(productId, page, pageSize, cancellationToken, warehouseId);
     });
 
     [Authorize(Roles = ReaderRoles)]
@@ -156,16 +165,17 @@ public sealed class InventoryTools
         Idempotent = true, OpenWorld = false, UseStructuredContent = true)]
     [Description("Summarize each category's active products, total quantity, cost value and retail inventory value.")]
     public static Task<IReadOnlyList<CategoryInventoryDto>> GetCategorySummary(
-        IInventoryReadService inventory, CancellationToken cancellationToken = default) =>
-        SafeAsync(() => inventory.GetCategorySummaryAsync(cancellationToken));
+        IInventoryReadService inventory, [Range(1, int.MaxValue), Description("Optional warehouse scope. Omit for aggregate inventory across warehouses.")] int? warehouseId = null,
+        CancellationToken cancellationToken = default) =>
+        SafeAsync(() => inventory.GetCategorySummaryAsync(cancellationToken, warehouseId));
 
-    private static void ValidatePaging(int page, int pageSize)
+    internal static void ValidatePaging(int page, int pageSize)
     {
         if (page < 1 || pageSize is < 1 or > 100 || (long)(page - 1) * pageSize > int.MaxValue)
             throw new AppValidationException("page must be positive and pageSize must be between 1 and 100.");
     }
 
-    private static async Task<T> SafeAsync<T>(Func<Task<T>> action)
+    internal static async Task<T> SafeAsync<T>(Func<Task<T>> action)
     {
         try
         {

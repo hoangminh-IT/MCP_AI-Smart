@@ -71,6 +71,7 @@ public sealed class DevelopmentCatalogSeeder(AppDbContext database)
         }
         await database.SaveChangesAsync(cancellationToken);
         database.Inventories.AddRange(added.Select(product => new Inventory { ProductId = product.Id, Quantity = 0 }));
+        database.WarehouseInventories.AddRange(added.Select(product => new WarehouseInventory { ProductId = product.Id, WarehouseId = 1 }));
         await database.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return added.Count;

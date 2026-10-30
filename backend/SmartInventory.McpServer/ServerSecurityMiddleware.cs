@@ -1,17 +1,17 @@
 using Microsoft.AspNetCore.Mvc;
+using SmartInventory.Infrastructure.Hosting;
 
 namespace SmartInventory.McpServer;
 
-/// <summary>Restricts this local MCP resource server's Host and browser Origin headers.</summary>
+/// <summary>Restricts the MCP resource server's Host and browser Origin headers using validated exact allowlists.</summary>
 public sealed class ServerSecurityMiddleware(RequestDelegate next, McpOriginPolicy policy)
 {
     public async Task InvokeAsync(HttpContext context)
     {
-        var host = context.Request.Host.Host;
-        if (!host.Equals("localhost", StringComparison.OrdinalIgnoreCase) &&
-            host is not ("127.0.0.1" or "[::1]" or "::1"))
+        var host = HttpSecurityConfiguration.NormalizeHost(context.Request.Host.Host);
+        if (!policy.AllowedHosts.Contains(host))
         {
-            await RejectAsync(context, "This MCP server accepts requests to loopback hosts only.");
+            await RejectAsync(context, "The request Host is not permitted.");
             return;
         }
 
@@ -38,4 +38,4 @@ public sealed class ServerSecurityMiddleware(RequestDelegate next, McpOriginPoli
     }
 }
 
-public sealed record McpOriginPolicy(IReadOnlySet<string> AllowedOrigins);
+public sealed record McpOriginPolicy(IReadOnlySet<string> AllowedOrigins, IReadOnlySet<string> AllowedHosts);

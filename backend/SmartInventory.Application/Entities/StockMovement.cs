@@ -5,6 +5,9 @@ namespace SmartInventory.Application.Entities;
 [Table("stock_movements")]
 public class StockMovement
 {
+    [Column("warehouse_id")] public int WarehouseId { get; set; } = 1;
+    [Column("warehouse_quantity_before")] public int? WarehouseQuantityBefore { get; set; }
+    [Column("warehouse_quantity_after")] public int? WarehouseQuantityAfter { get; set; }
     [Column("id")]
     public int Id { get; set; }
 

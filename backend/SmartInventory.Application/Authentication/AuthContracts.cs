@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using SmartInventory.Application.Entities;
 
 namespace SmartInventory.Application.Authentication;
@@ -7,12 +8,23 @@ public static class UserRoles
 {
     public const string Admin = "Admin";
     public const string Staff = "Staff";
-    public static bool IsValid(string role) => role is Admin or Staff;
+    public const string Customer = "Customer";
+    public static bool IsValid(string role) => role is Admin or Staff or Customer;
+    public static bool CanManageInventory(string role) => role is Admin or Staff;
 }
 
 public sealed record LoginRequest(
     [Required, MaxLength(80)] string Username,
     [Required, MaxLength(128)] string Password);
+
+/// <summary>Public account registration. Access roles and activation are assigned exclusively by the server.</summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record RegisterRequest(
+    [Required, MaxLength(80)] string Username,
+    [Required, EmailAddress, MaxLength(254)] string Email,
+    [Required, MaxLength(160)] string FullName,
+    [Required, MinLength(12), MaxLength(128)] string Password,
+    [Required, MinLength(12), MaxLength(128)] string ConfirmPassword);
 
 public sealed record UpdateProfileRequest(
     [Required, EmailAddress, MaxLength(254)] string Email,
@@ -31,6 +43,10 @@ public sealed record UserProfile(int Id, string Username, string Email, string F
 public sealed record AccessToken(string Value, DateTime ExpiresAt);
 public sealed record LoginResponse(string AccessToken, DateTime ExpiresAt, UserProfile User);
 
+// Application-only result: controllers return Login and put RefreshToken exclusively in an HttpOnly cookie.
+public sealed record AuthSession(LoginResponse Login, string RefreshToken, DateTime RefreshExpiresAt);
+public sealed record BrowserSessionRequest([Range(1, int.MaxValue)] int? ExpectedUserId = null);
+
 public interface IAccessTokenIssuer
 {
     AccessToken Issue(User user);
@@ -38,7 +54,11 @@ public interface IAccessTokenIssuer
 
 public interface IAuthService
 {
-    Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default);
+    Task<UserProfile> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default);
+    Task<AuthSession> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default);
+    Task<AuthSession> RefreshAsync(string rawToken, int? expectedUserId, CancellationToken cancellationToken = default);
+    Task<bool> LogoutSessionAsync(string rawToken, int? expectedUserId, CancellationToken cancellationToken = default);
+    Task<int?> GetRefreshSessionOwnerAsync(string rawToken, CancellationToken cancellationToken = default);
     Task<UserProfile> GetProfileAsync(int userId, CancellationToken cancellationToken = default);
     Task<UserProfile> UpdateProfileAsync(int userId, UpdateProfileRequest request,
         CancellationToken cancellationToken = default);

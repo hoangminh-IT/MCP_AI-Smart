@@ -1,3 +1,5 @@
+using SmartInventory.Application.Warehouses;
+using SmartInventory.Infrastructure.Warehouses;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
@@ -9,14 +11,33 @@ using ModelContextProtocol.Protocol;
 using SmartInventory.Application.Authentication;
 using SmartInventory.Application.Catalog;
 using SmartInventory.Application.Mcp;
+using SmartInventory.Application.Customers;
+using SmartInventory.Application.Suppliers;
+using SmartInventory.Application.Purchasing;
+using SmartInventory.Application.Sales;
+using SmartInventory.Application.Stock;
+using SmartInventory.Application.Reports;
+using SmartInventory.Application.Notifications;
 using SmartInventory.Infrastructure.Authentication;
 using SmartInventory.Infrastructure.Catalog;
 using SmartInventory.Infrastructure.Data;
 using SmartInventory.Infrastructure.Mcp;
+using SmartInventory.Infrastructure.Customers;
+using SmartInventory.Infrastructure.Suppliers;
+using SmartInventory.Infrastructure.Purchasing;
+using SmartInventory.Infrastructure.Sales;
+using SmartInventory.Infrastructure.Stock;
+using SmartInventory.Infrastructure.Reports;
+using SmartInventory.Infrastructure.Notifications;
+using SmartInventory.Infrastructure.Hosting;
 using SmartInventory.McpServer;
 using SmartInventory.McpServer.Tools;
+using SmartInventory.McpServer.Knowledge;
+using SmartInventory.McpServer.Schema;
 
 var builder = WebApplication.CreateBuilder(args);
+var localHttpConfiguration = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("Testing");
+var allowedHosts = HttpSecurityConfiguration.McpHosts(builder.Configuration, localHttpConfiguration);
 builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 64 * 1024);
 builder.Services.AddProblemDetails();
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
@@ -28,22 +49,33 @@ builder.Services.AddScoped<IProductService>(services => services.GetRequiredServ
 builder.Services.AddScoped<ICategoryService>(services => services.GetRequiredService<CatalogService>());
 builder.Services.AddScoped<IInventoryReadService, InventoryReadService>();
 builder.Services.AddScoped<IMcpExecutionLogService, McpExecutionLogService>();
+builder.Services.AddScoped<IMcpBusinessReadService, McpBusinessReadService>();
+builder.Services.AddScoped<McpWriteIntentService>();
+builder.Services.AddScoped<IMcpWriteIntentService>(services => services.GetRequiredService<McpWriteIntentService>());
+builder.Services.AddScoped<IMcpWriteGuard>(services => services.GetRequiredService<McpWriteIntentService>());
+builder.Services.AddScoped<ISupplierService, SupplierService>();
+builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<StockService>();
+builder.Services.AddScoped<IWarehouseService, WarehouseService>();
+builder.Services.AddScoped<IStockService>(services => services.GetRequiredService<StockService>());
+builder.Services.AddScoped<IStockTransactionService>(services => services.GetRequiredService<StockService>());
+builder.Services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
+builder.Services.AddScoped<ISalesOrderService, SalesOrderService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 
-var allowedOrigins = builder.Configuration.GetSection("Mcp:AllowedOrigins").Get<string[]>()
-    ?? ["http://localhost:6274", "http://127.0.0.1:6274"];
-foreach (var origin in allowedOrigins)
-{
-    if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https") ||
-        !string.IsNullOrEmpty(uri.UserInfo) || uri.AbsolutePath != "/" ||
-        !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment) || origin.EndsWith('/'))
-        throw new InvalidOperationException("Mcp:AllowedOrigins must contain HTTP(S) origins without paths, credentials, queries or fragments.");
-}
-builder.Services.AddSingleton(new McpOriginPolicy(new HashSet<string>(allowedOrigins, StringComparer.Ordinal)));
+var allowedOrigins = HttpSecurityConfiguration.Origins(builder.Configuration, "Mcp:AllowedOrigins", localHttpConfiguration,
+    "http://localhost:6274", "http://127.0.0.1:6274");
+builder.Services.AddSingleton(new McpOriginPolicy(new HashSet<string>(allowedOrigins, StringComparer.Ordinal),
+    new HashSet<string>(allowedHosts, StringComparer.OrdinalIgnoreCase)));
 builder.Services.AddCors(options => options.AddPolicy("McpInspector", policy => policy
     .WithOrigins(allowedOrigins)
     .WithMethods("GET", "POST", "DELETE", "OPTIONS")
     .WithHeaders("Authorization", "Content-Type", "Accept", "MCP-Protocol-Version", "MCP-Session-Id", "Last-Event-ID")
     .WithExposedHeaders("MCP-Session-Id", "WWW-Authenticate")));
+var mcpRequestLimit = builder.Configuration.GetValue<int?>("Mcp:RateLimitPermitLimit") ?? 120;
+if (mcpRequestLimit is < 1 or > 100000)
+    throw new InvalidOperationException("Mcp:RateLimitPermitLimit must be between 1 and 100000.");
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -55,7 +87,7 @@ builder.Services.AddRateLimiter(options =>
         context.User.FindFirstValue("sub") ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
         _ => new FixedWindowRateLimiterOptions
         {
-            PermitLimit = 120, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true
+            PermitLimit = mcpRequestLimit, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true
         }));
 });
 
@@ -68,7 +100,11 @@ builder.Services.AddMcpServer(options =>
     .WithHttpTransport(options => options.SessionMode = HttpServerSessionMode.Stateless)
     .WithRequestFilters(filters => filters.AddCallToolFilter(McpExecutionFilter.Wrap))
     .AddAuthorizationFilters()
-    .WithTools<InventoryTools>();
+    .WithTools<InventoryTools>()
+    .WithTools<BusinessReadTools>()
+    .WithInventoryWriteTools()
+    .WithResources<InventoryResources>()
+    .WithPrompts<InventoryPrompts>();
 
 var app = builder.Build();
 app.UseExceptionHandler(new ExceptionHandlerOptions

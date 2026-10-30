@@ -1,6 +1,21 @@
 html, body, #root { min-height: 100%; margin: 0; }
-body { -webkit-font-smoothing: antialiased; }
+body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+* { box-sizing: border-box; }
 a { color: inherit; }
 button, input, textarea { font: inherit; }
-::selection { background: #dce6ff; }
 input[type="number"] { font-variant-numeric: tabular-nums; }
+.app-workspace .MuiTableCell-root { font-variant-numeric: tabular-nums; }
+.app-workspace .MuiTableContainer-root { scrollbar-width: thin; }
+.app-workspace .MuiTablePagination-root { border-top: 1px solid var(--workspace-divider, #e6ebf3); }
+:root[data-theme="dark"] .app-workspace { --workspace-divider: #2a3a50; }
+.workspace-content { scrollbar-gutter: stable; }
+.module-filters { background: linear-gradient(180deg, rgba(126,147,180,.035), rgba(126,147,180,.015)); }
+.module-filters .MuiInputBase-root { font-size: 13px; }
+:root { scrollbar-color: #c6d1df transparent; scrollbar-width: thin; }
+:root[data-theme="dark"] { scrollbar-color: #3d4e66 transparent; }
+.sidebar-navigation { scrollbar-color: #34475e transparent; scrollbar-width: thin; }
+.skip-link { position: fixed; left: 16px; top: -80px; z-index: 1500; padding: 12px 18px; border-radius: 8px; background: #fff; color: #1a293e; box-shadow: 0 4px 20px #0003; font-size: 13px; font-weight: 700; }
+.skip-link:focus { top: 12px; outline: 3px solid #315fe5; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

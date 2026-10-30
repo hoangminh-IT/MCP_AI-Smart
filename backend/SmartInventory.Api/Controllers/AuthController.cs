@@ -12,14 +12,26 @@ namespace SmartInventory.Api.Controllers;
 [ApiController]
 [Route("api/auth")]
 [Authorize]
-public sealed class AuthController(IAuthService authService) : ControllerBase
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+public sealed partial class AuthController(IAuthService authService, IHostEnvironment environment) : ControllerBase
 {
+    [HttpPost("register")]
+    [AllowAnonymous]
+    [EnableRateLimiting("auth")]
+    public async Task<ActionResult<UserProfile>> Register(RegisterRequest request,
+        CancellationToken cancellationToken) =>
+        StatusCode(StatusCodes.Status201Created, await authService.RegisterAsync(request, cancellationToken));
+
     [HttpPost("login")]
     [AllowAnonymous]
     [EnableRateLimiting("auth")]
     public async Task<ActionResult<LoginResponse>> Login(LoginRequest request,
-        CancellationToken cancellationToken) =>
-        Ok(await authService.LoginAsync(request, cancellationToken));
+        CancellationToken cancellationToken)
+    {
+        var session = await authService.LoginAsync(request, cancellationToken);
+        SetRefreshCookie(session);
+        return Ok(session.Login);
+    }
 
     [HttpGet("me")]
     public async Task<ActionResult<UserProfile>> Me(CancellationToken cancellationToken) =>
@@ -35,7 +47,10 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     public async Task<IActionResult> ChangePassword(ChangePasswordRequest request,
         CancellationToken cancellationToken)
     {
-        await authService.ChangePasswordAsync(CurrentUserId(), request, cancellationToken);
+        var userId = CurrentUserId();
+        var clearCookie = await CanClearRefreshCookieAsync(userId, cancellationToken);
+        await authService.ChangePasswordAsync(userId, request, cancellationToken);
+        if (clearCookie) DeleteRefreshCookie();
         return NoContent();
     }
 
@@ -43,7 +58,10 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     [HttpPost("logout")]
     public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
-        await authService.LogoutAsync(CurrentUserId(), cancellationToken);
+        var userId = CurrentUserId();
+        var clearCookie = await CanClearRefreshCookieAsync(userId, cancellationToken);
+        await authService.LogoutAsync(userId, cancellationToken);
+        if (clearCookie) DeleteRefreshCookie();
         return NoContent();
     }
 

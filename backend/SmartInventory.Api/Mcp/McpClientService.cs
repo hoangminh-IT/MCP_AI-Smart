@@ -13,8 +13,8 @@ using SmartInventory.Application.Mcp;
 namespace SmartInventory.Api.Mcp;
 
 /// <summary>A fresh official SDK transport/client per operation isolates caller credentials and bounds its lifetime.</summary>
-public sealed class McpClientService(IHttpContextAccessor httpContextAccessor, IHttpClientFactory httpClients,
-    IOptions<McpConnectionOptions> options, IMcpExecutionLogService logs, ILoggerFactory loggerFactory) : IMcpClientService
+public sealed partial class McpClientService(IHttpContextAccessor httpContextAccessor, IHttpClientFactory httpClients,
+    IOptions<McpConnectionOptions> options, IMcpExecutionLogService logs, ILoggerFactory loggerFactory) : IMcpClientService, IMcpKnowledgeClient, IMcpConfirmedToolClient
 {
     public async Task<McpConnectionStatus> GetStatusAsync(CancellationToken cancellationToken = default)
     {
@@ -65,8 +65,14 @@ public sealed class McpClientService(IHttpContextAccessor httpContextAccessor, I
         }
     }
 
-    public async Task<McpExecutionDto> ExecuteToolAsync(string toolName, JsonElement arguments,
-        CancellationToken cancellationToken = default)
+    public Task<McpExecutionDto> ExecuteToolAsync(string toolName, JsonElement arguments,
+        CancellationToken cancellationToken = default) => ExecuteToolCoreAsync(toolName, arguments, null, cancellationToken);
+
+    public Task<McpExecutionDto> ExecuteConfirmedAsync(string toolName, JsonElement arguments, string confirmationProof,
+        CancellationToken cancellationToken = default) => ExecuteToolCoreAsync(toolName, arguments, confirmationProof, cancellationToken);
+
+    private async Task<McpExecutionDto> ExecuteToolCoreAsync(string toolName, JsonElement arguments,
+        string? confirmationProof, CancellationToken cancellationToken)
     {
         var userId = CurrentUserId();
         var watch = Stopwatch.StartNew();
@@ -76,6 +82,8 @@ public sealed class McpClientService(IHttpContextAccessor httpContextAccessor, I
         try
         {
             McpToolPolicy.ValidateArguments(toolName, arguments);
+            if (McpToolPolicy.IsWrite(toolName) && string.IsNullOrEmpty(confirmationProof))
+                throw new AppValidationException("Prepare and explicitly confirm this write operation before execution.");
             var result = await WithClientAsync(async (client, token) =>
             {
                 var available = await client.ListToolsAsync(cancellationToken: token);
@@ -84,7 +92,7 @@ public sealed class McpClientService(IHttpContextAccessor httpContextAccessor, I
                 var dictionary = arguments.EnumerateObject().ToDictionary(property => property.Name,
                     property => (object?)property.Value.Clone(), StringComparer.Ordinal);
                 return await client.CallToolAsync(toolName, dictionary, cancellationToken: token);
-            }, cancellationToken);
+            }, cancellationToken, confirmationProof);
             watch.Stop();
             output = JsonSerializer.SerializeToElement(result, McpJsonUtilities.DefaultOptions);
             status = result.IsError is true ? McpExecutionStatuses.ToolError : McpExecutionStatuses.Succeeded;
@@ -129,17 +137,19 @@ public sealed class McpClientService(IHttpContextAccessor httpContextAccessor, I
     }
 
     private async Task<T> WithClientAsync<T>(Func<ModelContextProtocol.Client.McpClient, CancellationToken, Task<T>> operation,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, string? confirmationProof = null)
     {
         var settings = options.Value;
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(TimeSpan.FromSeconds(settings.TimeoutSeconds));
         var bearer = ReadCallerToken();
         var httpClient = httpClients.CreateClient("FirstPartyMcp");
+        var headers = new Dictionary<string, string> { ["Authorization"] = "Bearer " + bearer };
+        if (!string.IsNullOrEmpty(confirmationProof)) headers["X-Inventory-Confirmation"] = confirmationProof;
         await using var transport = new HttpClientTransport(new HttpClientTransportOptions
         {
             Endpoint = new Uri(settings.ServerUrl), TransportMode = HttpTransportMode.StreamableHttp,
-            AdditionalHeaders = new Dictionary<string, string> { ["Authorization"] = "Bearer " + bearer },
+            AdditionalHeaders = headers,
             EnableStandaloneGetStream = false
         }, httpClient, loggerFactory, ownsHttpClient: true);
         await using var client = await ModelContextProtocol.Client.McpClient.CreateAsync(transport,

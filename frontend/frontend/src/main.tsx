@@ -1,16 +1,27 @@
 import { StrictMode, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { CssBaseline, LinearProgress, ThemeProvider, createTheme } from '@mui/material';
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import { LinearProgress } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from './auth';
+import { AuthProvider, useAuth } from './auth';
 import { ToastProvider } from './shared';
 import { Shell } from './shell';
+import { AppearanceProvider } from './appearance';
+import { WarehouseScopeProvider } from './warehouses';
 import './styles.css';
 
 const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
 const Products = lazy(() => import('./pages/Products'));
 const Categories = lazy(() => import('./pages/Categories'));
+const Suppliers = lazy(() => import('./pages/Suppliers'));
+const Warehouses = lazy(() => import('./pages/Warehouses'));
+const Transfers = lazy(() => import('./pages/Transfers'));
+const Customers = lazy(() => import('./pages/Customers'));
+const Users = lazy(() => import('./pages/Users'));
+const Settings = lazy(() => import('./pages/Settings'));
+const AuditLogs = lazy(() => import('./pages/AuditLogs'));
+const PurchaseOrders = lazy(() => import('./pages/PurchaseOrders'));
 const Inventory = lazy(() => import('./pages/Inventory'));
 const StockMovements = lazy(() => import('./pages/StockMovements'));
 const Profile = lazy(() => import('./pages/Profile'));
@@ -18,18 +29,54 @@ const McpLab = lazy(() => import('./pages/McpLab'));
 const McpPlayground = lazy(() => import('./pages/McpPlayground'));
 const McpTrace = lazy(() => import('./pages/McpTrace'));
 const AiAssistant = lazy(() => import('./pages/AiAssistant'));
+const SalesOrders = lazy(() => import('./pages/SalesOrders'));
+const Reports = lazy(() => import('./pages/Reports'));
+const Notifications = lazy(() => import('./pages/Notifications'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, retry: false, refetchOnWindowFocus: false } } });
-const theme = createTheme({
-  palette: { primary: { main: '#3468F6' }, secondary: { main: '#0A1830' }, background: { default: '#F6F8FD', paper: '#FFFFFF' }, text: { primary: '#18243B', secondary: '#78869B' }, success: { main: '#0D9473' } },
-  typography: { fontFamily: 'Inter, "Noto Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', h4: { fontSize: '1.85rem', fontWeight: 800, letterSpacing: '-0.6px' }, h5: { fontWeight: 750 }, h6: { fontWeight: 700 }, button: { textTransform: 'none', fontWeight: 650 } },
-  shape: { borderRadius: 12 },
-  components: {
-    MuiButton: { defaultProps: { disableElevation: true }, styleOverrides: { root: { borderRadius: 10, minHeight: 40, paddingInline: 18 } } },
-    MuiPaper: { defaultProps: { elevation: 0 }, styleOverrides: { outlined: { borderColor: '#E3E9F1', borderRadius: 16 } } },
-    MuiTableCell: { styleOverrides: { head: { color: '#78869B', fontSize: 11, fontWeight: 750, letterSpacing: '.6px', background: '#FAFBFE', whiteSpace: 'nowrap' }, body: { borderColor: '#EEF1F6' } } },
-    MuiTextField: { defaultProps: { size: 'small' } },
-    MuiChip: { styleOverrides: { root: { fontWeight: 650, borderRadius: 7 } } },
-  },
-});
 
-createRoot(document.getElementById('root')!).render(<StrictMode><ThemeProvider theme={theme}><CssBaseline /><QueryClientProvider client={queryClient}><AuthProvider><ToastProvider><BrowserRouter><Suspense fallback={<LinearProgress />}><Routes><Route path="/login" element={<Login />} /><Route element={<Shell />}><Route index element={<Navigate to="/inventory" replace />} /><Route path="/inventory" element={<Inventory />} /><Route path="/stock-movements" element={<StockMovements />} /><Route path="/products" element={<Products />} /><Route path="/categories" element={<Categories />} /><Route path="/profile" element={<Profile />} /><Route path="/ai" element={<AiAssistant />} /><Route path="/mcp/lab" element={<McpLab />} /><Route path="/mcp/playground" element={<McpPlayground />} /><Route path="/mcp/trace" element={<McpTrace />} /><Route path="*" element={<Navigate to="/inventory" replace />} /></Route></Routes></Suspense></BrowserRouter></ToastProvider></AuthProvider></QueryClientProvider></ThemeProvider></StrictMode>);
+// The server enforces these same roles; this guard also avoids mounting inventory pages for customers.
+function StaffArea() {
+  const { user } = useAuth();
+  return user?.role === 'Customer' ? <Navigate to="/profile" replace /> : <Outlet />;
+}
+function AccountHome() {
+  const { user } = useAuth();
+  return <Navigate to={user?.role === 'Customer' ? '/profile' : '/dashboard'} replace />;
+}
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode><AppearanceProvider><QueryClientProvider client={queryClient}><AuthProvider><WarehouseScopeProvider><ToastProvider><BrowserRouter>
+    <Suspense fallback={<LinearProgress />}><Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route element={<Shell />}>
+        <Route index element={<AccountHome />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route element={<StaffArea />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/inventory" element={<Inventory />} />
+          <Route path="/stock-movements" element={<StockMovements />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/categories" element={<Categories />} />
+          <Route path="/suppliers" element={<Suppliers />} />
+          <Route path="/warehouses" element={<Warehouses />} />
+          <Route path="/transfers" element={<Transfers />} />
+          <Route path="/customers" element={<Customers />} />
+          <Route path="/users" element={<Users />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/audit" element={<AuditLogs />} />
+          <Route path="/purchase-orders" element={<PurchaseOrders />} />
+          <Route path="/sales-orders" element={<SalesOrders />} />
+          <Route path="/ai" element={<AiAssistant />} />
+          <Route path="/mcp/lab" element={<McpLab />} />
+          <Route path="/mcp/playground" element={<McpPlayground />} />
+          <Route path="/mcp/trace" element={<McpTrace />} />
+        </Route>
+        <Route path="*" element={<AccountHome />} />
+      </Route>
+    </Routes></Suspense>
+  </BrowserRouter></ToastProvider></WarehouseScopeProvider></AuthProvider></QueryClientProvider></AppearanceProvider></StrictMode>,
+);

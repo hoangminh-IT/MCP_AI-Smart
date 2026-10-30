@@ -13,9 +13,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using SmartInventory.Application.Authentication;
 using SmartInventory.Application.Entities;
+using SmartInventory.Application.Common;
 using SmartInventory.Infrastructure.Data;
 
 namespace SmartInventory.Infrastructure.Authentication;
@@ -25,8 +27,18 @@ public static class DependencyInjectionAuthenticationExtensions
     public static IServiceCollection AddInventoryAuthentication(
         this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentActor, HttpCurrentActor>();
         services.AddOptions<JwtOptions>()
             .Bind(configuration.GetSection(JwtOptions.SectionName))
+            .Configure<IHostEnvironment>((options, environment) =>
+            {
+                if (environment.IsDevelopment() || environment.IsEnvironment("Testing"))
+                {
+                    if (string.IsNullOrEmpty(options.Issuer)) options.Issuer = "SmartInventory.Api";
+                    if (string.IsNullOrEmpty(options.Audience)) options.Audience = "SmartInventory.Web";
+                }
+            })
             .Validate(options => !string.IsNullOrWhiteSpace(options.Issuer), "Jwt:Issuer is required.")
             .Validate(options => !string.IsNullOrWhiteSpace(options.Audience), "Jwt:Audience is required.")
             .Validate(options => options.HasValidSigningKey(),
@@ -80,6 +92,12 @@ public static class DependencyInjectionAuthenticationExtensions
 
         services.AddRateLimiter(options =>
         {
+            options.AddPolicy("refresh", context => RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 60, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true
+                }));
             options.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
                 context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                 _ => new FixedWindowRateLimiterOptions

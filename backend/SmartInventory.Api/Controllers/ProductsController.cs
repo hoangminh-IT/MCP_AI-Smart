@@ -15,7 +15,7 @@ public sealed class ProductsController(IProductService products, IProductCsvServ
         products.GetProductsAsync(query, cancellationToken);
 
     [HttpGet("{id:int}")]
-    public Task<ProductDto> Get(int id, CancellationToken cancellationToken) => products.GetProductAsync(id, cancellationToken);
+    public Task<ProductDto> Get(int id, CancellationToken cancellationToken, [FromQuery] int? warehouseId = null) => products.GetProductAsync(id, cancellationToken, warehouseId);
 
     [HttpPost]
     [Authorize(Roles = "Admin")]

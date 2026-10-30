@@ -1,161 +1,144 @@
 # AI Smart Inventory Management System
 
-Topic **MCP.2505 — Model Context Protocol, C# SDK**. This system connects a React/TypeScript interface to an ASP.NET Core API, PostgreSQL, and official C# MCP client/server SDKs. M2 and M3, the MCP read-tool path, and AI tool-calling orchestration are implemented. See [current verification and known gaps](docs/M3-VERIFICATION.md), [M2 verification](docs/M2-VERIFICATION.md), and [the original source audit](docs/M1-AUDIT.md).
+**MCP.2505 — Model Context Protocol, C# SDK.** Ứng dụng quản lý kho dùng React, ASP.NET Core 10, PostgreSQL và MCP Client/Server C# SDK 2.3.0. MCP Direct Test Mode sử dụng dữ liệu thật và chạy độc lập với API key của LLM.
 
-The repository contains four .NET 10 projects, additive EF Core migrations, a React frontend, and official MCP SDK 2.3.0. A live upstream LLM call and extended business modules such as suppliers/orders are not claimed as complete. Preserve the existing database and migrations.
+## Chức năng
 
-## Current layout
+- Đăng ký Khách hàng, đăng nhập JWT, refresh token, ba vai trò Admin/Staff/Customer, hồ sơ, đổi mật khẩu và quản lý người dùng.
+- Sản phẩm, danh mục, nhà cung cấp, khách hàng; ảnh sản phẩm, CSV và phân trang phía server.
+- Nhập/xuất/kiểm kê, nhiều kho, chuyển kho, đơn mua/nhận hàng và đơn bán/giao hàng; transaction, concurrency và chống thực thi trùng.
+- Dashboard, báo cáo CSV/Excel/PDF, thông báo, cấu hình, Light/Dark/System và audit metadata.
+- MCP Client Lab, Tool Playground, execution history; 25 read tools, 5 write tools, Resources và Prompts. Write tools phải có đề nghị và xác nhận người dùng ở tầng ứng dụng.
+- AI Assistant dùng adapter OpenAI-compatible có tool calling qua MCP Client C#. Hội thoại và tool trace được lưu; LLM không tự xác nhận thao tác ghi.
+
+**LLM thật đã được kiểm chứng với GroqCloud, model `openai/gpt-oss-20b`, ngày 2026-10-30.** Trong schema kiểm thử riêng, LLM gọi `GetInventorySummary` qua MCP Client/Server C#, đọc PostgreSQL và trả lời đúng 32 sản phẩm, tổng tồn 0. Đây là dữ liệu mẫu, không phải kết quả đọc kho development. [Kết quả và trace thực tế](../AI-Smart-Inventory-Support/docs/A2-LLM-VERIFICATION.md).
+
+## Tài khoản và phân quyền
+
+Từ `/login`, chọn **Đăng ký ngay** để mở `/register`. Đăng ký thành công tạo tài khoản **Khách hàng (Customer)** rồi chuyển về đăng nhập. Khách hàng chỉ xem/sửa hồ sơ của mình và đổi mật khẩu; không truy cập dữ liệu kho, quản trị, AI hoặc MCP. Admin và Nhân viên đăng nhập vào Dashboard, Khách hàng vào Hồ sơ.
+
+Admin mở **Người dùng**, tìm tài khoản, chọn **Chỉnh sửa → Vai trò → Nhân viên**, lưu và xác nhận để cấp quyền kho. Admin cũng có thể đổi lại Khách hàng, cấp vai trò quản trị hoặc ngừng hoạt động tài khoản. Thay đổi quyền/trạng thái thu hồi access token và refresh session cũ; người dùng đăng nhập lại để nhận quyền mới. Máy chủ bảo vệ quản trị viên đang hoạt động cuối cùng.
+
+Mật khẩu đăng ký mới dài 12–128 ký tự và được lưu bằng `PasswordHasher<User>` với salt riêng. API đăng ký không nhận `role` hay `isActive`, có validation, rate limit, unique username và audit. Vai trò Customer của tài khoản đăng nhập tách biệt với danh bạ đối tác ở module Khách hàng. [Giao diện và kết quả kiểm thử](../AI-Smart-Inventory-Support/docs/UI-ACCOUNTS-VERIFICATION.md).
+
+## Cấu trúc ứng dụng
 
 ```text
 AI-Smart-Inventory/
-├── AI-Smart-Inventory.slnx
 ├── backend/
-│   ├── SmartInventory.Api/
-│   ├── SmartInventory.Application/
-│   ├── SmartInventory.Infrastructure/
-│   └── SmartInventory.McpServer/
-├── .config/dotnet-tools.json
-├── frontend/frontend/      # Connected React application; kept nested for the # path-safe Vite launcher
-├── scripts/dev-db.py
-├── docs/                    # System architecture and verification reports
-└── ../backups/              # Workspace-level database archives; outside Git
+│   ├── SmartInventory.Api/             REST, JWT, MCP Client C#, AI orchestration
+│   ├── SmartInventory.Application/     Entities, contracts, validation, business policies
+│   ├── SmartInventory.Infrastructure/  PostgreSQL, services, migrations, integrations
+│   └── SmartInventory.McpServer/       MCP HTTP host, tools, resources, prompts
+├── frontend/frontend/                 React + TypeScript + Vite + Material UI
+├── scripts/                           EF migrations và backup/restore development
+├── .config/                           Phiên bản EF CLI được khóa
+├── .github/workflows/ci.yml            Build backend/frontend
+├── AI-Smart-Inventory.slnx             Bốn project của ứng dụng
+└── global.json                        .NET SDK được khóa
 ```
 
-## Development requirements
+Giữ đường dẫn `frontend/frontend`: launcher Vite xử lý workspace có ký tự `#`. `App_Data/uploads/products` là nơi lưu ảnh sản phẩm, API tự tạo khi chạy. Không đưa ảnh runtime hoặc thông tin bí mật vào Git.
 
-- .NET SDK 10, PostgreSQL and an existing development database named `ai_smart_inventory`.
-- Python 3.10+ for the database helper; it uses the standard library only.
-- PostgreSQL `psql`, `pg_dump` and `pg_restore` on `PATH`. The helper also checks `/Library/PostgreSQL/18/bin` on macOS. Use tools compatible with your PostgreSQL server; an older `pg_dump` cannot back up a newer server.
-- NuGet access for the initial restore. The repository-local EF tool is pinned to **10.0.13**, matching the EF Core runtime packages.
+## Yêu cầu và cấu hình
 
-Run all commands below from this directory. Preserve existing database contents and migrations.
+.NET SDK 10.0.201, Node 24, PostgreSQL. Python 3.10+ và các công cụ PostgreSQL `psql`, `pg_dump`, `pg_restore` cần cho script kiểm tra/backup/restore.
 
-## Configure PostgreSQL
-
-The API loads `ConnectionStrings:DefaultConnection` through ASP.NET Core configuration. Keep credentials in Development user secrets or the `ConnectionStrings__DefaultConnection` environment variable. The API already declares its `UserSecretsId`. Do not commit passwords to tracked configuration.
-
-An Npgsql connection string has this form; replace the placeholders in your private configuration:
+API và MCP Server dùng chung UserSecretsId trong các file `.csproj` khi chạy Development. Cấu hình riêng bằng .NET User Secrets hoặc biến môi trường, với các khóa:
 
 ```text
-Host=localhost;Port=5432;Database=ai_smart_inventory;Username=<database-user>;Password=<database-password>
+ConnectionStrings:DefaultConnection = Host=localhost;Port=5432;Database=ai_smart_inventory;Username=<user>;Password=<password>
+Jwt:SigningKey = <random-secret-at-least-32-UTF8-bytes>
+Bootstrap:Username = <your-admin-name>
+Bootstrap:Password = <your-private-12-to-128-character-password>
+Bootstrap:Email = <your-email>
 ```
 
-For Development, edit the API user-secrets JSON privately at `~/.microsoft/usersecrets/<UserSecretsId>/secrets.json` on macOS/Linux:
+Ví dụ đặt riêng một giá trị: `dotnet user-secrets set "Jwt:SigningKey" "<private-value>" --project backend/SmartInventory.Api`. Biến môi trường thay dấu `:` bằng `__`, ví dụ `ConnectionStrings__DefaultConnection`. Không lưu secrets trong source hoặc frontend.
 
-```json
-{
-  "ConnectionStrings:DefaultConnection": "<your-private-Npgsql-connection-string>"
-}
-```
+Development có cấu hình loopback cho CORS/MCP và JWT issuer/audience. Production cần cấu hình rõ endpoint, hosts, origins và JWT; xem [hướng dẫn triển khai](../AI-Smart-Inventory-Support/docs/DEPLOYMENT.md).
 
-Use the `UserSecretsId` in `backend/SmartInventory.Api/SmartInventory.Api.csproj`. On Windows, the secrets directory is `%APPDATA%\Microsoft\UserSecrets\<UserSecretsId>`. The database helper reads this file only when `--use-user-secrets` is supplied and the environment is Development or unspecified. An explicit connection environment variable takes precedence.
+## Build và database
 
-## Restore, build and identify the DbContext
+Chạy từ thư mục `AI-Smart-Inventory`. Database development `ai_smart_inventory` phải tồn tại; không reset database đang có dữ liệu.
 
 ```sh
 dotnet tool restore
-dotnet restore AI-Smart-Inventory.slnx
-dotnet build AI-Smart-Inventory.slnx --no-restore
-
-ASPNETCORE_ENVIRONMENT=Development dotnet ef dbcontext info \
-  --project backend/SmartInventory.Infrastructure \
-  --startup-project backend/SmartInventory.Api \
-  --context AppDbContext
-
-ASPNETCORE_ENVIRONMENT=Development dotnet ef migrations list \
-  --project backend/SmartInventory.Infrastructure \
-  --startup-project backend/SmartInventory.Api \
-  --context AppDbContext
-```
-
-The migrations and `AppDbContext` belong to Infrastructure; the API supplies the startup configuration and connection string. Selecting both projects avoids EF searching the wrong assembly for the context. For an environment connection string, the same commands work without user secrets.
-
-## Inspect and back up before applying migrations
-
-```sh
+dotnet restore AI-Smart-Inventory.slnx --locked-mode
+dotnet build AI-Smart-Inventory.slnx --no-restore --disable-build-servers
 python3 scripts/dev-db.py --use-user-secrets inspect
 python3 scripts/dev-db.py --use-user-secrets backup
+ASPNETCORE_ENVIRONMENT=Development bash scripts/ef.sh database update
+ASPNETCORE_ENVIRONMENT=Development bash scripts/ef.sh migrations has-pending-model-changes
 ```
 
-`inspect` executes a read-only transaction. It reports table counts, applied migration IDs, duplicate SKU/usernames, orphan references and negative stock/prices. Exit code `0` means these checks passed; `2` means a required table/column is missing or data needs attention; `1` means configuration/tool/connection failure. These checks support migration review and do not replace business tests.
-
-`backup` writes a PostgreSQL custom-format archive to `MCP_C#/backups/` (one directory above this repository) using an exclusive file and owner-only file permissions. An existing file is never overwritten. `AI_SMART_INVENTORY_BACKUP_DIR` can override the location; an absolute value is recommended, while relative values resolve from `MCP_C#/`. `--output` accepts a filename only, not a path, and the script prevents traversal outside the configured directory. Example: `backup --output before-migration.dump`. The helper passes credentials through the child process environment, never through command arguments or printed configuration. It accepts explicit single-host PostgreSQL URLs or basic Npgsql connection strings; unsupported options are rejected instead of silently changing connection behavior.
-
-Generate an idempotent migration script for review, then apply pending migrations to the configured development database:
+DbContext và migrations nằm trong Infrastructure; API là startup project. `scripts/ef.sh` chỉ định cả hai và `AppDbContext`. Giữ toàn bộ lịch sử migrations. Backup mặc định ở `../backups`; restore chỉ vào database development rỗng được chọn:
 
 ```sh
-ASPNETCORE_ENVIRONMENT=Development dotnet ef migrations script --idempotent \
-  --project backend/SmartInventory.Infrastructure \
-  --startup-project backend/SmartInventory.Api \
-  --context AppDbContext \
-  --output ../backups/migration-review.sql
-
-ASPNETCORE_ENVIRONMENT=Development dotnet ef database update \
-  --project backend/SmartInventory.Infrastructure \
-  --startup-project backend/SmartInventory.Api \
-  --context AppDbContext
-
-python3 scripts/dev-db.py --use-user-secrets inspect
+python3 scripts/dev-db.py --use-user-secrets restore ../backups/<archive>.dump --confirm-restore
 ```
 
-The additive integrity migration can reject existing duplicates, orphan records or invalid negative values. Resolve identified data deliberately before applying it; do not delete existing migrations or reset the database.
-
-## Restore a development archive
-
-Choose an existing, empty development database as the connection target before restoring. The helper connects to that database and requires explicit write confirmation:
+Lần đầu, sau migration và cấu hình Bootstrap riêng:
 
 ```sh
-python3 scripts/dev-db.py --use-user-secrets restore \
-  ../backups/<archive-name>.dump --confirm-restore
+dotnet run --project backend/SmartInventory.Api --launch-profile http -- --bootstrap-admin --seed
 ```
 
-Restore runs in one transaction with `pg_restore --exit-on-error`. It never drops objects or creates a database. Conflicting existing objects cause a failure and rollback. A restore has not been performed as part of M1 verification.
+Bootstrap chỉ tạo Admin đầu tiên nếu chưa có Admin hoạt động. Seed bổ sung các SKU mẫu còn thiếu, tồn ban đầu bằng 0; nhập kho phải qua nghiệp vụ chuẩn. Repository không chứa mật khẩu Admin mặc định.
 
-## Run the current API
+## Chạy ứng dụng
 
-Run commands from the repository root. The API and MCP server both require `ConnectionStrings:DefaultConnection` and valid `Jwt:Issuer`, `Jwt:Audience`, and `Jwt:SigningKey` values in local .NET User Secrets or environment variables; never commit credentials.
+Mở ba Terminal riêng:
 
 ```sh
-dotnet run --project backend/SmartInventory.McpServer/SmartInventory.McpServer.csproj --launch-profile http
-dotnet run --project backend/SmartInventory.Api/SmartInventory.Api.csproj --launch-profile http
+dotnet run --project backend/SmartInventory.McpServer --launch-profile http
 ```
 
-The launch profiles use MCP `http://localhost:5206/mcp` and API `http://localhost:5062`. The MCP server provides authenticated Streamable HTTP tools and health endpoints. The API's C# MCP client connects to it on demand; MCP status performs real `ListToolsAsync` discovery and reports connected only when permitted inventory tools are present. Direct MCP tool testing does not require an LLM key.
-
-API health probes are anonymous and return minimal, secret-free JSON: `GET /health` and `/health/live` return `{"status":"Healthy"}` when the host responds; `GET /health/ready` checks PostgreSQL connectivity and pending migrations, returning `{"status":"Ready"}` or HTTP 503 with `{"status":"Not ready"}`. The API intentionally does not map the bare `/` root path, so `GET /` returns 404.
-
-For the AI Chatbot, configure `Llm:Provider=OpenAICompatible`, `Llm:BaseUrl`, `Llm:Model`, and `Llm:ApiKey` in the API project's .NET User Secrets or environment. Supported environment names are `Llm__Provider`, `Llm__BaseUrl`, `Llm__Model`, and `Llm__ApiKey`; for example, a local compatible endpoint can use `http://localhost:1234/v1` and the adapter calls `/chat/completions`. Remote endpoints must use HTTPS. Never put the key in appsettings, source or frontend config. Without a provider key the AI screen reports unavailable, while MCP Direct Test remains usable. No live provider call is claimed until a configured provider has been called successfully.
-
-## Run the React frontend
-
-Use Node.js 24 for the verified development setup:
+```sh
+dotnet run --project backend/SmartInventory.Api --launch-profile http
+```
 
 ```sh
 cd frontend/frontend
 npm ci
-VITE_API_PROXY_TARGET=http://localhost:5062 npm run dev
+npm run dev
 ```
 
-Open `http://127.0.0.1:5173`. Log in using an Admin account provisioned for the development database. Products, Categories, Inventory, stock movement history, Profile, MCP Playground and AI conversations use the API. Admin can manage catalog items and adjust stock; Admin/Staff can receive or issue stock.
+Frontend: `http://127.0.0.1:5173`; API: `http://localhost:5062`; MCP: `http://localhost:5206/mcp`. Frontend mặc định proxy `/api` và `/uploads` về API 5062; đổi đích bằng `VITE_API_PROXY_TARGET` khi cần. `/health/live` kiểm tra process; API `/health/ready` kiểm tra PostgreSQL và migrations. API không có trang tại `/`.
+
+Build giao diện production:
 
 ```sh
-npm run build
+npm --prefix frontend/frontend ci
+npm --prefix frontend/frontend run build
 ```
 
-The build includes TypeScript checks and emits `dist/`. Lazy-loaded pages and separate UI/React bundles keep the initial bundle manageable. The npm runner handles the existing workspace `#` path using a temporary symlink; this layout is intentionally retained because the launcher and browser-test scripts rely on it. See [frontend setup and token storage tradeoff](frontend/frontend/README.md).
+Production cần reverse proxy HTTPS, route `/api` và `/uploads` về API, và SPA fallback về `index.html`. Vite preview không tự proxy API production. Workflow CI trong repository chỉ restore và build bốn project backend cùng frontend.
 
-## Troubleshooting
+## AI provider
 
-- **No DbContext was found:** run EF from the solution directory with Infrastructure as `--project`, API as `--startup-project`, and `--context AppDbContext`. Restore the local EF tool first.
-- **EF tool/runtime mismatch:** use `dotnet tool restore` and the repository-local `dotnet ef`; avoid relying on a different global tool version.
-- **Connection/authentication failure:** verify the configured existing database and PostgreSQL service, then rerun `inspect`. Do not paste passwords or complete connection strings into logs.
-- **Integrity migration fails:** check the read-only preflight output and inspect the relevant data before retrying.
-- **Frontend cannot reach API:** start the API and align `VITE_API_PROXY_TARGET` with its HTTP address (default project profile: port 5062). This variable is a public URL, not a place for secrets.
-- **Vite fails resolving a `#` path:** use the repository's `npm run dev`/`npm run build` commands, which provide the temporary path alias.
-- **MCP startup fails JWT validation:** configure JWT issuer, audience and signing key in local User Secrets/environment before starting either host.
-- **AI unavailable:** configure backend-only LLM settings. A test-provider contract is not evidence that the external provider is reachable.
-- **Backup location:** defaults to `../backups` relative to this repository; set `AI_SMART_INVENTORY_BACKUP_DIR` to choose another private workspace path.
+Cấu hình hiện chọn GroqCloud qua adapter định dạng OpenAI-compatible: `Llm:Provider=OpenAICompatible`, `Llm:BaseUrl=https://api.groq.com/openai/v1`, `Llm:Model=openai/gpt-oss-20b`, `Llm:ReasoningEffort=low` và `Llm:ApiKey`, hoặc các biến `Llm__...`. `OpenAICompatible` là loại adapter; yêu cầu được gửi đến GroqCloud. `ReasoningEffort` là tùy chọn theo model. Khởi động lại API sau khi đổi cấu hình. `ILlmProvider` cho phép đổi adapter hoặc endpoint; kết nối Ollama chưa được xác minh.
 
-## Validation and next milestones
+Groq hiện dùng `Llm:MaxRateLimitRetries=1`, `Llm:RequestTimeoutSeconds=120`. Chỉ lỗi tốc độ 429 đã phân loại và có `Retry-After` hợp lệ từ 0 đến 60 giây mới được thử lại một lần cho mỗi lượt completion, trong deadline chung. Mặc định retry tắt cho các cấu hình khác; lỗi billing/quota không được thử lại. Việc chờ không thực thi lại tool MCP hoặc tự xác nhận thao tác ghi. Hạn mức nhà cung cấp vẫn có thể làm yêu cầu phải chờ hoặc thất bại; không đổi model tự động.
 
-Latest full-suite verification recorded in [M3-VERIFICATION.md](docs/M3-VERIFICATION.md): solution restore/build succeeded, 84 PostgreSQL-backed integration tests passed, React production build passed, and the browser smoke test verifies catalog, stock receipt/issue, movement history and MCP flows. Nine Python helper tests pass. Five Vietnamese intent paths are covered with a scripted provider and real MCP/PostgreSQL, but a real upstream model call and model language understanding remain unverified; see the report for other roadmap gaps.
+Trong lúc chat chờ, giao diện đọc tiến độ đã lưu mỗi 2 giây để hiển thị bước thực tế: khám phá tools, gọi LLM, chạy MCP tool hoặc chờ rate limit, kèm thời gian đã chờ và nút Dừng. Rời trang cũng hủy request. Timeout trình duyệt lấy deadline backend cộng 15 giây; cấu hình hiện tại là 135 giây, và khi chưa đọc được deadline thì dùng 120 + 15 giây. Không tự gửi lại toàn bộ chat hoặc thao tác MCP. Backend gửi phần kết quả MCP có cấu trúc một lần cho LLM, giữ nguyên toàn bộ envelope trong lịch sử/audit để tránh dữ liệu lặp mà vẫn tra cứu được đầy đủ. Tốc độ trả lời vẫn phụ thuộc provider và số lượt gọi tool.
+
+Không có key hợp lệ thì AI hiển thị lỗi/trạng thái chưa cấu hình; dữ liệu kho và Direct Mode không phụ thuộc provider. Tool calls có giới hạn thời gian/số vòng, không có câu trả lời giả khi tool lỗi.
+
+## Tài liệu, kiểm thử và dữ liệu đã tách riêng
+
+Các tài liệu và bộ kiểm thử được giữ trong thư mục ngang hàng [AI-Smart-Inventory-Support](../AI-Smart-Inventory-Support/), ngoài source ứng dụng:
+
+- [Tài liệu hệ thống](../AI-Smart-Inventory-Support/docs/): kiến trúc, API, hướng dẫn demo và bằng chứng kiểm thử.
+- [Học phần](../AI-Smart-Inventory-Support/academic/): PowerPoint, notebook `.ipynb`, dataset CSV/JSON và câu hỏi thảo luận.
+- [Kiểm thử và hướng dẫn chạy](../AI-Smart-Inventory-Support/README.md): C# integration, frontend, browser, Python và các script hỗ trợ.
+
+Chỉ giữ code/cấu hình cần để build, chạy và bảo trì ứng dụng trong thư mục này. Tests và tài liệu được di chuyển để bảo toàn công việc, không được coi là phần đã bỏ.
+
+## Xử lý lỗi thường gặp
+
+- `No DbContext was found`: chạy `dotnet tool restore`, dùng `scripts/ef.sh` từ thư mục ứng dụng.
+- PostgreSQL lỗi: kiểm tra service, database, quyền và private config; không in connection string hoặc mật khẩu ra log.
+- MCP Disconnected: chạy MCP Server, kiểm tra trusted URL/Host/Origin và cấu hình JWT dùng chung. CRUD vẫn dùng được khi MCP mất kết nối.
+- AI unavailable: kiểm tra khóa, model và status provider. Build thành công không chứng minh LLM thật đã hoạt động.
+- Phiên đăng nhập: access token nằm trong memory/sessionStorage; refresh token dùng HttpOnly cookie, có rotation và thu hồi phía server. Mật khẩu chỉ được lưu dưới dạng hash ở PostgreSQL.

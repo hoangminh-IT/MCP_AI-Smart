@@ -28,21 +28,22 @@ public interface IMcpExecutionLogService
 
 public sealed record InventorySummaryDto(int TotalProducts, int TotalCategories, long TotalQuantity,
     decimal InventoryCostValue, decimal InventoryRetailValue, int LowStockCount, int OutOfStockCount,
-    long StockMovementCount, DateTime AsOf);
+    long StockMovementCount, DateTime AsOf, int? WarehouseId = null, string? WarehouseCode = null, string? WarehouseName = null);
 public sealed record StockMovementDto(int Id, int ProductId, string Sku, string ProductName,
     string Type, int Quantity, DateTime CreatedAt, int? QuantityBefore = null, int? QuantityAfter = null,
-    string? Reason = null, int? CreatedBy = null, Guid? RequestId = null, string? ReferenceType = null, string? ReferenceId = null);
+    string? Reason = null, int? CreatedBy = null, Guid? RequestId = null, string? ReferenceType = null, string? ReferenceId = null, int WarehouseId = 1, string? WarehouseCode = null,
+    string? WarehouseName = null, int? WarehouseQuantityBefore = null, int? WarehouseQuantityAfter = null);
 public sealed record CategoryInventoryDto(int CategoryId, string Name, int ProductCount, long TotalQuantity,
     decimal InventoryCostValue, decimal InventoryRetailValue);
 
 public interface IInventoryReadService
 {
-    Task<ProductDto> GetProductBySkuAsync(string sku, CancellationToken cancellationToken);
-    Task<PagedResult<ProductDto>> GetLowStockProductsAsync(int? threshold, int page, int pageSize, CancellationToken cancellationToken);
-    Task<PagedResult<ProductDto>> GetOutOfStockProductsAsync(int page, int pageSize, CancellationToken cancellationToken);
-    Task<InventorySummaryDto> GetInventorySummaryAsync(CancellationToken cancellationToken);
-    Task<PagedResult<StockMovementDto>> GetStockMovementHistoryAsync(int? productId, int page, int pageSize, CancellationToken cancellationToken);
-    Task<IReadOnlyList<CategoryInventoryDto>> GetCategorySummaryAsync(CancellationToken cancellationToken);
+    Task<ProductDto> GetProductBySkuAsync(string sku, CancellationToken cancellationToken, int? warehouseId = null);
+    Task<PagedResult<ProductDto>> GetLowStockProductsAsync(int? threshold, int page, int pageSize, CancellationToken cancellationToken, int? warehouseId = null);
+    Task<PagedResult<ProductDto>> GetOutOfStockProductsAsync(int page, int pageSize, CancellationToken cancellationToken, int? warehouseId = null);
+    Task<InventorySummaryDto> GetInventorySummaryAsync(CancellationToken cancellationToken, int? warehouseId = null);
+    Task<PagedResult<StockMovementDto>> GetStockMovementHistoryAsync(int? productId, int page, int pageSize, CancellationToken cancellationToken, int? warehouseId = null);
+    Task<IReadOnlyList<CategoryInventoryDto>> GetCategorySummaryAsync(CancellationToken cancellationToken, int? warehouseId = null);
 }
 
 public static class McpExecutionStatuses

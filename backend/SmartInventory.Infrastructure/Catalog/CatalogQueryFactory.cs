@@ -6,10 +6,15 @@ namespace SmartInventory.Infrastructure.Catalog;
 
 internal static class CatalogQueryFactory
 {
-    public static IQueryable<ProductDto> Products(AppDbContext database) =>
+    public static IQueryable<ProductDto> Products(AppDbContext database, int? warehouseId = null)
+    {
+        var quantities = database.Inventories.AsNoTracking().Select(item => new { item.ProductId, item.Quantity });
+        if (warehouseId.HasValue) quantities = database.WarehouseInventories.AsNoTracking()
+            .Where(item => item.WarehouseId == warehouseId.Value).Select(item => new { item.ProductId, item.Quantity });
+        return
         from product in database.Products.AsNoTracking()
         join category in database.Categories.AsNoTracking() on product.CategoryId equals category.Id
-        join stock in database.Inventories.AsNoTracking() on product.Id equals stock.ProductId into productStock
+        join stock in quantities on product.Id equals stock.ProductId into productStock
         from stock in productStock.DefaultIfEmpty()
         select new ProductDto
         {
@@ -17,6 +22,7 @@ internal static class CatalogQueryFactory
             Sku = product.Sku, Name = product.Name, Description = product.Description,
             Price = product.Price, CostPrice = product.CostPrice, MinStock = product.MinStock,
             ImageUrl = product.ImageUrl, IsActive = product.IsActive,
-            Quantity = stock == null ? 0 : stock.Quantity, CreatedAt = product.CreatedAt, UpdatedAt = product.UpdatedAt
+            Quantity = (int?)stock.Quantity ?? 0, CreatedAt = product.CreatedAt, UpdatedAt = product.UpdatedAt
         };
+    }
 }

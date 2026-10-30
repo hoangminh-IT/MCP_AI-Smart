@@ -8,7 +8,7 @@ using SmartInventory.Infrastructure.Data;
 
 namespace SmartInventory.Infrastructure.Authentication;
 
-public sealed class AuthService(
+public sealed partial class AuthService(
     AppDbContext db,
     IPasswordHasher<User> passwordHasher,
     IAccessTokenIssuer tokenIssuer) : IAuthService
@@ -17,7 +17,7 @@ public sealed class AuthService(
     private static readonly string DummyPasswordHash =
         new PasswordHasher<User>().HashPassword(DummyUser, "timing-comparison-only");
 
-    public async Task<LoginResponse> LoginAsync(LoginRequest request,
+    public async Task<AuthSession> LoginAsync(LoginRequest request,
         CancellationToken cancellationToken = default)
     {
         var username = request.Username?.Trim();
@@ -33,15 +33,24 @@ public sealed class AuthService(
             throw new AppUnauthorizedException("Username or password is incorrect, or the account is inactive.");
         }
 
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var verifiedHash = user.PasswordHash;
+        user = await LockUserAsync(user.Id, cancellationToken);
+        if (!user.IsActive || !UserRoles.IsValid(user.Role) || user.PasswordHash != verifiedHash)
+            throw new AppUnauthorizedException("The account changed during sign-in. Sign in again.");
         if (verification == PasswordVerificationResult.SuccessRehashNeeded)
         {
             user.PasswordHash = passwordHasher.HashPassword(user, password);
             user.UpdatedAt = DateTime.UtcNow;
-            await SaveChangesAsync(cancellationToken);
         }
+        db.AuditLogs.Add(new AuditLog { ActorId = user.Id, Action = "LoggedIn", EntityName = nameof(User),
+            TargetId = user.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), Status = "Succeeded", CreatedAt = DateTime.UtcNow });
+        var credential = CreateSession(user, DateTime.UtcNow);
+        db.RefreshSessions.Add(credential.Entity);
+        await SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
-        var token = tokenIssuer.Issue(user);
-        return new LoginResponse(token.Value, token.ExpiresAt, UserProfile.FromUser(user));
+        return SessionResponse(user, credential);
     }
 
     public async Task<UserProfile> GetProfileAsync(int userId,
@@ -76,7 +85,9 @@ public sealed class AuthService(
             throw new AppValidationException("Password validation failed.",
                 new Dictionary<string, string[]> { ["newPassword"] = ["Use 12 to 128 characters."] });
 
-        var user = await GetActiveUserAsync(userId, cancellationToken);
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var user = await LockUserAsync(userId, cancellationToken);
+        if (!user.IsActive || !UserRoles.IsValid(user.Role)) throw InvalidRefresh();
         if (VerifyPassword(user, user.PasswordHash, request.CurrentPassword ?? string.Empty) ==
             PasswordVerificationResult.Failed)
         {
@@ -90,17 +101,25 @@ public sealed class AuthService(
         user.PasswordHash = passwordHasher.HashPassword(user, request.NewPassword);
         user.TokenVersion = checked(user.TokenVersion + 1);
         user.UpdatedAt = DateTime.UtcNow;
+        await RevokeSessionsAsync(user.Id, user.UpdatedAt, cancellationToken);
         await SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     public async Task LogoutAsync(int userId, CancellationToken cancellationToken = default)
     {
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var count = await db.Users.Where(user => user.Id == userId && user.IsActive)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(user => user.TokenVersion, user => user.TokenVersion + 1)
                 .SetProperty(user => user.UpdatedAt, DateTime.UtcNow), cancellationToken);
         if (count == 0)
             throw new AppUnauthorizedException("The account is no longer available.");
+        await RevokeSessionsAsync(userId, DateTime.UtcNow, cancellationToken);
+        db.AuditLogs.Add(new AuditLog { ActorId = userId, Action = "LoggedOut", EntityName = nameof(User),
+            TargetId = userId.ToString(System.Globalization.CultureInfo.InvariantCulture), Status = "Succeeded", CreatedAt = DateTime.UtcNow });
+        await SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
     private async Task<User> GetActiveUserAsync(int userId, CancellationToken cancellationToken)

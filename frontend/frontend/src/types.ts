@@ -1,4 +1,4 @@
-export interface User { id: number; username: string; email: string; fullName: string; role: 'Admin' | 'Staff' }
+export interface User { id: number; username: string; email: string; fullName: string; role: 'Admin' | 'Staff' | 'Customer' }
 export interface LoginResult { accessToken: string; expiresAt: string; user: User }
 export interface Page<T> { items: T[]; totalCount: number; page: number; pageSize: number }
 export interface Category { id: number; name: string; description: string | null; createdAt: string; productCount: number }
@@ -17,12 +17,14 @@ export interface StockSummary {
   outOfStockCount: number; stockMovementCount: number; asOf: string;
 }
 export interface StockMovement {
-  id: number; productId: number; sku: string; productName: string; type: 'Receipt' | 'Issue' | 'Adjustment';
+  id: number; productId: number; sku: string; productName: string; type: 'Receipt' | 'Issue' | 'Adjustment' | 'TransferIn' | 'TransferOut';
   quantity: number; createdAt: string; quantityBefore: number | null; quantityAfter: number | null;
   reason: string | null; createdBy: number | null; requestId: string | null;
   referenceType: string | null; referenceId: string | null;
+  warehouseId: number; warehouseCode: string | null; warehouseName: string | null; warehouseQuantityBefore: number | null; warehouseQuantityAfter: number | null;
 }
 export interface StockOperation {
   movementId: number; productId: number; type: string; quantity: number; quantityBefore: number;
   quantityAfter: number; reason: string; createdBy: number; createdAt: string; requestId: string; replayed: boolean;
+  warehouseId: number; warehouseCode: string | null; warehouseName: string | null; warehouseQuantityBefore: number | null; warehouseQuantityAfter: number | null;
 }

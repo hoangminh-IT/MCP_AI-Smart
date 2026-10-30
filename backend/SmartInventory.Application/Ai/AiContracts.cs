@@ -4,7 +4,11 @@ using SmartInventory.Application.Mcp;
 
 namespace SmartInventory.Application.Ai;
 
-public sealed record AiProviderStatus(bool Configured, string Provider, string Model, string? Reason);
+public sealed record AiProviderStatus(bool Configured, string Provider, string Model, string? Reason,
+    int RequestTimeoutSeconds = 60);
+public sealed record AiProviderWait(bool Waiting, int RetryAfterSeconds);
+public sealed record AiRequestProgress(string Stage, DateTime UpdatedAt, int? RetryAfterSeconds = null,
+    string? ToolName = null);
 public sealed record AiFunctionCall(string Id, string Name, string Arguments);
 public sealed record AiProviderMessage(string Role, string? Content, IReadOnlyList<AiFunctionCall>? ToolCalls = null, string? ToolCallId = null);
 public sealed record AiCompletion(string? Content, IReadOnlyList<AiFunctionCall> ToolCalls);
@@ -14,7 +18,8 @@ public interface ILlmProvider
 {
     AiProviderStatus GetStatus();
     Task<AiCompletion> CompleteAsync(IReadOnlyList<AiProviderMessage> messages,
-        IReadOnlyList<McpToolDescriptor> tools, CancellationToken cancellationToken);
+        IReadOnlyList<McpToolDescriptor> tools, CancellationToken cancellationToken,
+        Func<AiProviderWait, CancellationToken, Task>? onWait = null);
 }
 
 public sealed record AiSessionDto(Guid Id, string Title, DateTime CreatedAt, DateTime UpdatedAt);

@@ -4,6 +4,7 @@ using SmartInventory.Application.Catalog;
 using SmartInventory.Application.Common;
 using SmartInventory.Application.Entities;
 using SmartInventory.Infrastructure.Data;
+using SmartInventory.Infrastructure.Warehouses;
 
 namespace SmartInventory.Infrastructure.Catalog;
 
@@ -12,6 +13,7 @@ public sealed class CatalogService(AppDbContext database) : IProductService, ICa
     public async Task<PagedResult<ProductDto>> GetProductsAsync(CatalogQuery query, CancellationToken cancellationToken)
     {
         ValidateQuery(query);
+        await WarehouseAccess.ReadAsync(database, query.WarehouseId, cancellationToken);
         var products = SortProducts(FilterProducts(query), query);
         var total = await products.CountAsync(cancellationToken);
         var items = await products.Skip((query.Page - 1) * query.PageSize).Take(query.PageSize)
@@ -19,21 +21,25 @@ public sealed class CatalogService(AppDbContext database) : IProductService, ICa
         return new(items, total, query.Page, query.PageSize);
     }
 
-    public async Task<ProductDto> GetProductAsync(int id, CancellationToken cancellationToken) =>
-        await ProductProjection().SingleOrDefaultAsync(product => product.Id == id, cancellationToken)
-        ?? throw new AppNotFoundException("Product was not found.");
+    public async Task<ProductDto> GetProductAsync(int id, CancellationToken cancellationToken, int? warehouseId = null)
+    {
+        await WarehouseAccess.ReadAsync(database, warehouseId, cancellationToken);
+        return await CatalogQueryFactory.Products(database, warehouseId).SingleOrDefaultAsync(product => product.Id == id, cancellationToken)
+            ?? throw new AppNotFoundException("Product was not found.");
+    }
 
     public async Task<ProductDto> CreateProductAsync(ProductRequest request, CancellationToken cancellationToken)
     {
         NormalizeAndValidate(request);
         await ValidateCategoryAsync(request.CategoryId, cancellationToken);
         await ValidateSkuAsync(request.Sku, null, cancellationToken);
-        var product = new Product();
+        var product = new Product { MinStock = request.MinStock ?? await GetDefaultMinStockAsync(cancellationToken) };
         Apply(product, request);
         database.Products.Add(product);
         await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
         await database.SaveChangesAsync(cancellationToken);
         database.Inventories.Add(new Inventory { ProductId = product.Id, Quantity = 0 });
+        database.WarehouseInventories.Add(new WarehouseInventory { ProductId = product.Id, WarehouseId = 1 });
         await database.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return await GetProductAsync(product.Id, cancellationToken);
@@ -72,6 +78,7 @@ public sealed class CatalogService(AppDbContext database) : IProductService, ICa
     public async Task<IReadOnlyList<ProductDto>> ExportProductsAsync(CatalogQuery query, CancellationToken cancellationToken)
     {
         ValidateQuery(query);
+        await WarehouseAccess.ReadAsync(database, query.WarehouseId, cancellationToken);
         var products = SortProducts(FilterProducts(query), query);
         // Keep memory bounded and tell the user to filter large exports.
         if (await products.CountAsync(cancellationToken) > 10000)
@@ -118,6 +125,7 @@ public sealed class CatalogService(AppDbContext database) : IProductService, ICa
         var existingBySku = existing.ToDictionary(product => product.Sku, StringComparer.OrdinalIgnoreCase);
         var created = new List<Product>();
         var updated = 0;
+        var defaultMinStock = rows.Any(row => row.MinStock is null) ? await GetDefaultMinStockAsync(cancellationToken) : 0;
         foreach (var row in rows)
         {
             if (existingBySku.TryGetValue(row.Sku, out var product))
@@ -127,7 +135,7 @@ public sealed class CatalogService(AppDbContext database) : IProductService, ICa
             }
             else
             {
-                product = new Product();
+                product = new Product { MinStock = defaultMinStock };
                 Apply(product, row);
                 database.Products.Add(product);
                 created.Add(product);
@@ -135,6 +143,7 @@ public sealed class CatalogService(AppDbContext database) : IProductService, ICa
         }
         await database.SaveChangesAsync(cancellationToken);
         database.Inventories.AddRange(created.Select(product => new Inventory { ProductId = product.Id, Quantity = 0 }));
+        database.WarehouseInventories.AddRange(created.Select(product => new WarehouseInventory { ProductId = product.Id, WarehouseId = 1 }));
         await database.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return new(created.Count, updated);
@@ -200,7 +209,7 @@ public sealed class CatalogService(AppDbContext database) : IProductService, ICa
 
     internal IQueryable<ProductDto> FilterProducts(CatalogQuery query)
     {
-        var products = ProductProjection();
+        var products = CatalogQueryFactory.Products(database, query.WarehouseId);
         if (!query.IncludeInactive) products = products.Where(product => product.IsActive);
         if (query.CategoryId.HasValue) products = products.Where(product => product.CategoryId == query.CategoryId);
         if (!string.IsNullOrWhiteSpace(query.Search))
@@ -250,8 +259,8 @@ public sealed class CatalogService(AppDbContext database) : IProductService, ICa
     {
         if (query.Page < 1 || query.PageSize is < 1 or > 100 || (long)(query.Page - 1) * query.PageSize > int.MaxValue)
             throw new AppValidationException("page must be positive and pageSize must be between 1 and 100.");
-        if (query.CategoryId is <= 0)
-            throw new AppValidationException("categoryId must be positive.");
+        if (query.CategoryId is <= 0 || query.WarehouseId is <= 0)
+            throw new AppValidationException("categoryId and warehouseId must be positive when supplied.");
         if (query.Search?.Length > 200)
             throw new AppValidationException("Search must be at most 200 characters.");
         query.SortBy = string.IsNullOrWhiteSpace(query.SortBy) ? "name" : query.SortBy.Trim();
@@ -299,8 +308,11 @@ public sealed class CatalogService(AppDbContext database) : IProductService, ICa
         product.Description = request.Description;
         product.Price = request.Price;
         product.CostPrice = request.CostPrice;
-        product.MinStock = request.MinStock;
+        product.MinStock = request.MinStock ?? product.MinStock;
         product.ImageUrl = request.ImageUrl;
         product.UpdatedAt = DateTime.UtcNow;
     }
+
+    private Task<int> GetDefaultMinStockAsync(CancellationToken cancellationToken) => database.ApplicationSettings.AsNoTracking()
+        .Where(settings => settings.Id == 1).Select(settings => settings.DefaultMinStock).SingleAsync(cancellationToken);
 }

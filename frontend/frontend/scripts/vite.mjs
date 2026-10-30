@@ -8,6 +8,7 @@ import { spawn } from 'node:child_process';
 // resolve application files through a temporary alias when its path contains one.
 const project = dirname(dirname(fileURLToPath(import.meta.url)));
 let temporaryDirectory;
+let cacheDirectory;
 let root = project;
 if (/[#?]/.test(project)) {
   temporaryDirectory = mkdtempSync(join(tmpdir(), 'smart-inventory-vite-'));
@@ -15,6 +16,10 @@ if (/[#?]/.test(project)) {
   symlinkSync(project, root, process.platform === 'win32' ? 'junction' : 'dir');
 }
 const cleanup = () => {
+  if (cacheDirectory) {
+    rmSync(cacheDirectory, { recursive: true, force: true });
+    cacheDirectory = undefined;
+  }
   if (temporaryDirectory) {
     rmSync(temporaryDirectory, { recursive: true, force: true });
     temporaryDirectory = undefined;
@@ -39,7 +44,10 @@ if (temporaryDirectory) {
   process.exit(exitCode);
 }
 const { build, createServer, preview } = await import('vite');
-const config = { root, configFile: join(root, 'vite.config.ts'), resolve: { preserveSymlinks: true } };
+// Each alias/process needs its own optimizer cache. Parallel development/test
+// servers otherwise rewrite the same dependency files with different React URLs.
+cacheDirectory = mkdtempSync(join(tmpdir(), 'smart-inventory-vite-cache-'));
+const config = { root, configFile: join(root, 'vite.config.ts'), cacheDir: cacheDirectory, resolve: { preserveSymlinks: true } };
 
 function option(name, fallback) {
   const position = arguments_.indexOf(name);
