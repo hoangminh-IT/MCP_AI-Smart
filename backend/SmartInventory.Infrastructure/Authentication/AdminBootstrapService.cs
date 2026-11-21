@@ -26,8 +26,8 @@ public sealed class AdminBootstrapService(
         var errors = new Dictionary<string, string[]>();
         if (!Regex.IsMatch(username, "^[A-Za-z0-9._-]{3,80}$", RegexOptions.CultureInvariant))
             errors["username"] = ["Bootstrap:Username must contain 3 to 80 letters, digits, dots, underscores or hyphens."];
-        if (password.Length is < 12 or > 128)
-            errors["password"] = ["Bootstrap:Password must contain 12 to 128 characters."];
+        if (string.IsNullOrWhiteSpace(password))
+            errors["password"] = ["Bootstrap:Password must not be empty or whitespace only."];
         if (email.Length is 0 or > 254 || !new EmailAddressAttribute().IsValid(email))
             errors["email"] = ["Bootstrap:Email must be a valid email address."];
         if (fullName.Length is 0 or > 160)

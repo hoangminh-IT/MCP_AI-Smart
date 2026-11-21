@@ -82,4 +82,3 @@ backend/SmartInventory.Api/App_Data/**
 .coverage
 coverage/
 **/coverage/
-/.github/workflows/ci.yml

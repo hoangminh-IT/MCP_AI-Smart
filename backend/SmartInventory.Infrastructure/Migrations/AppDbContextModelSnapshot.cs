@@ -508,6 +508,59 @@ namespace SmartInventory.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("SmartInventory.Application.Entities.PasswordResetToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("ConsumedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("consumed_at");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<int>("TokenVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("token_version");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "ConsumedAt");
+
+                    b.ToTable("password_reset_tokens", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_password_reset_tokens_consumed", "consumed_at IS NULL OR consumed_at >= created_at");
+
+                            t.HasCheckConstraint("CK_password_reset_tokens_expiry", "expires_at > created_at");
+
+                            t.HasCheckConstraint("CK_password_reset_tokens_hash", "token_hash ~ '^[0-9A-F]{64}$'");
+
+                            t.HasCheckConstraint("CK_password_reset_tokens_version", "token_version >= 0");
+                        });
+                });
+
             modelBuilder.Entity("SmartInventory.Application.Entities.Product", b =>
                 {
                     b.Property<int>("Id")
@@ -1680,6 +1733,15 @@ namespace SmartInventory.Infrastructure.Migrations
                         .HasForeignKey("SessionId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("SmartInventory.Application.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("SmartInventory.Application.Entities.PasswordResetToken", b =>
+                {
                     b.HasOne("SmartInventory.Application.Entities.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")

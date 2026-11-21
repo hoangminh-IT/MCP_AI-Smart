@@ -1,0 +1,33 @@
+id,sku,name,min_stock,quantity
+1,SP001,Logitech MX Master 3S,10,0
+2,SP002,Logitech MX Keys S,10,0
+3,SP003,Keychron K2 Keyboard,10,0
+4,SP004,Razer DeathAdder V3,10,0
+5,SP005,Dell P2425H Monitor,10,0
+6,SP006,LG 27UP850 Monitor,10,0
+7,SP007,ASUS ProArt PA278QV,10,6
+8,SP008,Intel NUC Mini PC,10,0
+9,SP009,Samsung 990 PRO 1TB SSD,10,0
+10,SP010,Samsung T7 Shield 1TB,10,0
+11,SP011,WD Blue 2TB Hard Drive,10,0
+12,SP012,Seagate IronWolf 4TB,10,0
+13,SP013,Kingston DataTraveler 128GB,10,0
+14,SP014,SanDisk Extreme 256GB SD,10,0
+15,SP015,TP-Link Archer AX55,10,0
+16,SP016,ASUS RT-AX58U Router,10,5
+17,SP017,TP-Link TL-SG108 Switch,10,0
+18,SP018,Ubiquiti UniFi U6 Lite,10,0
+19,SP019,Cat6 Ethernet Cable 3m,10,30
+20,SP020,USB-C Ethernet Adapter,10,0
+21,SP021,Anker USB-C Hub 7-in-1,10,10
+22,SP022,UGREEN USB-C Cable 2m,10,0
+23,SP023,Anker Nano 65W Charger,10,9
+24,SP024,Belkin HDMI 2.1 Cable,10,15
+25,SP025,Laptop Stand Aluminum,10,0
+26,SP026,Desk Cable Organizer,10,0
+27,SP027,Logitech C920 Webcam,10,0
+28,SP028,Jabra Evolve2 40 Headset,10,0
+29,SP029,HyperX Cloud III Headset,10,0
+30,SP030,Blue Yeti USB Microphone,10,20
+31,SP031,Crucial DDR5 32GB Kit,10,0
+32,SP032,Corsair Vengeance DDR4 16GB,10,50

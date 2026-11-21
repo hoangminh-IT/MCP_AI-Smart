@@ -58,6 +58,9 @@ builder.Services.AddDbContext<AppDbContext>(options => options.UseNpgsql(
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy());
 builder.Services.AddInventoryAuthentication(builder.Configuration);
+builder.Services.Configure<PasswordRecoveryOptions>(builder.Configuration.GetSection("PasswordRecovery"));
+builder.Services.AddScoped<IPasswordRecoveryEmailSender, SmtpPasswordRecoveryEmailSender>();
+builder.Services.AddScoped<IPasswordRecoveryService, PasswordRecoveryService>();
 builder.Services.AddInventoryMcpClient(builder.Configuration);
 builder.Services.AddInventoryAi(builder.Configuration);
 builder.Services.AddScoped<CatalogService>();

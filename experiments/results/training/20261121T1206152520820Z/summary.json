@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "source": "REAL_CSHARP_TRAINING_SYNTHETIC_UTTERANCES",
+  "algorithm": "TF-IDF \u002B multiclass softmax regression, full-batch gradient descent and L2 regularization",
+  "runId": "20261121T1206152520820Z",
+  "datasetSha256": "E9F23126D7BB229CCC63C9C28A8F0A96A2E53A59691B019A44D23221A34F9BAD",
+  "trainCount": 96,
+  "validationCount": 32,
+  "testCount": 32,
+  "configCount": 10,
+  "epochRows": 591,
+  "selectedConfig": "T10",
+  "baseline": "Always predict the first majority class (classes balanced)",
+  "baselineTestAccuracy": 0.125,
+  "selectedTestAccuracy": 0.9375,
+  "selectedTestMacroF1": 0.9365079365079365,
+  "testUsedForSelection": false,
+  "savedModelRoundTripPassed": true
+}

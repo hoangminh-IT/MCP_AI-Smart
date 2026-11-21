@@ -1,8 +1,14 @@
 <Solution>
   <Folder Name="/backend/">
+    <Project Path="backend/SmartInventory.AppHost/SmartInventory.AppHost.csproj" />
     <Project Path="backend/SmartInventory.Api/SmartInventory.Api.csproj" />
     <Project Path="backend/SmartInventory.Application/SmartInventory.Application.csproj" />
+    <Project Path="backend/SmartInventory.DatabaseSeeder/SmartInventory.DatabaseSeeder.csproj" />
     <Project Path="backend/SmartInventory.Infrastructure/SmartInventory.Infrastructure.csproj" />
     <Project Path="backend/SmartInventory.McpServer/SmartInventory.McpServer.csproj" />
+  </Folder>
+  <Folder Name="/experiments/">
+    <Project Path="experiments/Training/Training.csproj" />
+    <Project Path="experiments/Verification/Verification.csproj" />
   </Folder>
 </Solution>

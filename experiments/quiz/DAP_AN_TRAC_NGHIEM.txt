@@ -1,0 +1,42 @@
+ĐÁP ÁN VÀ GIẢI THÍCH — 20 CÂU TRẮC NGHIỆM MCP C#
+
+Câu 1: B. MCP là Model Context Protocol; PostgreSQL, React và mô hình học máy có vai trò riêng.
+
+Câu 2: C. MCP Client giao tiếp với server qua SDK để khám phá/gọi tool; quyền vẫn do backend kiểm tra.
+
+Câu 3: A. Tool và Resource là hai loại khả năng khác nhau được server cung cấp.
+
+Câu 4: D. Prompt là mẫu tương tác, không đồng nghĩa với câu trả lời đã được LLM sinh ra.
+
+Câu 5: B. SDK cung cấp các thao tác liệt kê và gọi tool; các lựa chọn khác thuộc nghiệp vụ khác.
+
+Câu 6: D. Cần kiểm tra cả HTTP và kết quả/trạng thái MCP cùng output mong đợi.
+
+Câu 7: C. Phân trang thay số dòng của trang, không đổi tổng số sản phẩm khớp truy vấn.
+
+Câu 8: A. Dùng chung service giúp tránh sao chép và làm lệch quy tắc nghiệp vụ.
+
+Câu 9: C. Bước xác nhận ở tầng ứng dụng tách khỏi LLM và phải xảy ra trước thực thi ghi.
+
+Câu 10: A. Cơ chế idempotency/replay bảo vệ dữ liệu khỏi ghi trùng khi thử lại cùng yêu cầu.
+
+Câu 11: D. Customer không được truy cập nghiệp vụ kho/MCP; backend và router cùng giới hạn theo vai trò.
+
+Câu 12: B. Đây là mô hình phụ chọn tool; không phải fine-tuning LLM hoặc thay đổi giao thức MCP.
+
+Câu 13: C. Tập được chia cố định 96/32/32, cân bằng 8 lớp và kiểm tra ID/câu chuẩn hóa không trùng.
+
+Câu 14: A. Chỉ fit trên Train để tránh dùng thông tin của tập giữ riêng khi tạo features.
+
+Câu 15: D. Không chọn lại mô hình sau khi xem Test; Test dùng để đánh giá lựa chọn đã định trước.
+
+Câu 16: B. Epoch thuộc vòng huấn luyện mô hình, khác với một tool call hoặc một request HTTP.
+
+Câu 17: A. Log huấn luyện ghi diễn biến học theo epoch; execution log MCP là bằng chứng khác và secrets không được lưu.
+
+Câu 18: C. Accuracy = 30/32 = 0,9375 = 93,75%.
+
+Câu 19: B. Mỗi lớp có 4/32 câu Test; luôn chọn một lớp chỉ đúng 4 câu, tương đương 12,5%.
+
+Câu 20: D. Dataset hiện là câu mẫu nhỏ; cần đánh giá độc lập và biện pháp kiểm soát trước khi cân nhắc triển khai.
+

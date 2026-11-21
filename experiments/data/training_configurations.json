@@ -1,0 +1,82 @@
+[
+  {
+    "id": "T01",
+    "epochs": 1,
+    "learningRate": 0.001,
+    "l2": 0,
+    "ngrams": 1,
+    "seed": 42
+  },
+  {
+    "id": "T02",
+    "epochs": 5,
+    "learningRate": 0.01,
+    "l2": 0.0001,
+    "ngrams": 1,
+    "seed": 42
+  },
+  {
+    "id": "T03",
+    "epochs": 15,
+    "learningRate": 0.03,
+    "l2": 0.0001,
+    "ngrams": 1,
+    "seed": 42
+  },
+  {
+    "id": "T04",
+    "epochs": 40,
+    "learningRate": 0.05,
+    "l2": 0.0001,
+    "ngrams": 1,
+    "seed": 42
+  },
+  {
+    "id": "T05",
+    "epochs": 80,
+    "learningRate": 0.1,
+    "l2": 0.0001,
+    "ngrams": 1,
+    "seed": 42
+  },
+  {
+    "id": "T06",
+    "epochs": 80,
+    "learningRate": 0.2,
+    "l2": 0.001,
+    "ngrams": 1,
+    "seed": 42
+  },
+  {
+    "id": "T07",
+    "epochs": 80,
+    "learningRate": 0.1,
+    "l2": 0.01,
+    "ngrams": 1,
+    "seed": 42
+  },
+  {
+    "id": "T08",
+    "epochs": 80,
+    "learningRate": 0.1,
+    "l2": 0.1,
+    "ngrams": 1,
+    "seed": 42
+  },
+  {
+    "id": "T09",
+    "epochs": 80,
+    "learningRate": 0.1,
+    "l2": 0.001,
+    "ngrams": 2,
+    "seed": 42
+  },
+  {
+    "id": "T10",
+    "epochs": 120,
+    "learningRate": 0.1,
+    "l2": 0.001,
+    "ngrams": 2,
+    "seed": 42
+  }
+]

@@ -1,0 +1,6 @@
+{
+  "selectedConfig": "T10",
+  "selectedAt": "2026-11-21T12:06:15.514689+00:00",
+  "criterion": "Validation macro-F1 descending; validation cross-entropy ascending; config ID as final tie-break.",
+  "testUsedForSelection": false
+}

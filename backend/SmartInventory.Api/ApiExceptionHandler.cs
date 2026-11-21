@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using SmartInventory.Application.Common;
 using SmartInventory.Application.Ai;
+using SmartInventory.Application.Authentication;
 
 namespace SmartInventory.Api;
 
@@ -20,6 +21,7 @@ public sealed class ApiExceptionHandler(IProblemDetailsService problems, ILogger
             AppNotFoundException => (404, "Not found", exception.Message),
             AppConflictException => (409, "Conflict", exception.Message),
             AppServiceUnavailableException => (503, "Service unavailable", exception.Message),
+            PasswordRecoveryUnavailableException => (503, "Password recovery unavailable", exception.Message),
             AiUnavailableException => (503, "AI unavailable", exception.Message),
             AiProviderException => (502, "AI provider error", exception.Message),
             DbUpdateConcurrencyException => (409, "Conflict", "The record changed during this request. Reload it and try again."),

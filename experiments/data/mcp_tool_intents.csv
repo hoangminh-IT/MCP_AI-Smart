@@ -1,0 +1,161 @@
+id,split,intent,text
+I01-01,train,GetAllProducts,Liệt kê tất cả sản phẩm trong hệ thống
+I01-02,train,GetAllProducts,Cho tôi xem danh sách mặt hàng
+I01-03,train,GetAllProducts,Hiển thị các sản phẩm đang hoạt động
+I01-04,train,GetAllProducts,Tôi muốn xem danh mục sản phẩm đầy đủ
+I01-05,train,GetAllProducts,Mở bảng liệt kê sản phẩm
+I01-06,train,GetAllProducts,Đọc danh sách toàn bộ mặt hàng
+I01-07,train,GetAllProducts,Có những sản phẩm nào đang được quản lý
+I01-08,train,GetAllProducts,Lấy các mặt hàng để tôi xem
+I01-09,train,GetAllProducts,Xem toàn bộ danh sách sản phẩm
+I01-10,train,GetAllProducts,Trả về bảng sản phẩm hiện có
+I01-11,train,GetAllProducts,Liệt kê các mặt hàng của công ty
+I01-12,train,GetAllProducts,Hiện danh sách hàng hóa đang quản lý
+I01-13,validation,GetAllProducts,Đưa tôi danh sách các sản phẩm
+I01-14,validation,GetAllProducts,Tôi cần bảng liệt kê mặt hàng hiện tại
+I01-15,validation,GetAllProducts,Xem những sản phẩm đang có trong hệ thống
+I01-16,validation,GetAllProducts,Lấy danh sách hàng hóa đầy đủ
+I01-17,test,GetAllProducts,Cho xem tất cả mặt hàng đang hoạt động
+I01-18,test,GetAllProducts,Mở danh sách sản phẩm để tra cứu
+I01-19,test,GetAllProducts,Liệt kê toàn bộ hàng hóa được quản lý
+I01-20,test,GetAllProducts,Hiển thị bảng mặt hàng của hệ thống
+I02-01,train,GetLowStockProducts,Sản phẩm nào đang sắp hết hàng
+I02-02,train,GetLowStockProducts,Liệt kê hàng có tồn kho thấp
+I02-03,train,GetLowStockProducts,Cho xem những mặt hàng cần nhập thêm
+I02-04,train,GetLowStockProducts,Mặt hàng nào dưới định mức tồn
+I02-05,train,GetLowStockProducts,Tìm sản phẩm có số lượng thấp
+I02-06,train,GetLowStockProducts,Hàng nào sắp chạm ngưỡng tối thiểu
+I02-07,train,GetLowStockProducts,Cảnh báo những sản phẩm cần bổ sung
+I02-08,train,GetLowStockProducts,Liệt kê các sản phẩm tồn thấp hơn mức cảnh báo
+I02-09,train,GetLowStockProducts,Tôi cần danh sách hàng sắp thiếu
+I02-10,train,GetLowStockProducts,Cho biết mặt hàng nào gần hết
+I02-11,train,GetLowStockProducts,Kiểm tra các sản phẩm cần đặt thêm
+I02-12,train,GetLowStockProducts,Có hàng nào dưới ngưỡng tồn tối thiểu không
+I02-13,validation,GetLowStockProducts,Đưa danh sách mặt hàng sắp hết
+I02-14,validation,GetLowStockProducts,Tìm các sản phẩm cần bổ sung tồn kho
+I02-15,validation,GetLowStockProducts,Hiện hàng dưới định mức an toàn
+I02-16,validation,GetLowStockProducts,Cho tôi xem cảnh báo tồn thấp
+I02-17,test,GetLowStockProducts,Liệt kê những sản phẩm gần hết hàng
+I02-18,test,GetLowStockProducts,Mặt hàng nào đang thiếu so với định mức
+I02-19,test,GetLowStockProducts,Xem danh sách tồn kho thấp cần nhập thêm
+I02-20,test,GetLowStockProducts,Tôi muốn kiểm tra hàng sắp thiếu để bổ sung
+I03-01,train,GetOutOfStockProducts,Sản phẩm nào đã hết hàng
+I03-02,train,GetOutOfStockProducts,Liệt kê mặt hàng có tồn bằng không
+I03-03,train,GetOutOfStockProducts,Cho xem hàng không còn số lượng
+I03-04,train,GetOutOfStockProducts,Tìm các sản phẩm tồn kho bằng 0
+I03-05,train,GetOutOfStockProducts,Mặt hàng nào đã bán hết
+I03-06,train,GetOutOfStockProducts,Hiện danh sách hàng đã hết
+I03-07,train,GetOutOfStockProducts,Sản phẩm nào hiện không còn tồn
+I03-08,train,GetOutOfStockProducts,Tôi cần xem những mặt hàng bằng không
+I03-09,train,GetOutOfStockProducts,Kiểm tra hàng đã cạn kho
+I03-10,train,GetOutOfStockProducts,Danh sách sản phẩm không còn hàng
+I03-11,train,GetOutOfStockProducts,Có mặt hàng nào hết sạch không
+I03-12,train,GetOutOfStockProducts,Lấy những sản phẩm số lượng bằng không
+I03-13,validation,GetOutOfStockProducts,Đưa danh sách các sản phẩm hết hàng
+I03-14,validation,GetOutOfStockProducts,Hiển thị mặt hàng tồn kho bằng không
+I03-15,validation,GetOutOfStockProducts,Tìm hàng không còn đơn vị nào
+I03-16,validation,GetOutOfStockProducts,Cho biết sản phẩm nào đã cạn tồn
+I03-17,test,GetOutOfStockProducts,Liệt kê mặt hàng đã hết sạch
+I03-18,test,GetOutOfStockProducts,Tôi cần các sản phẩm có số lượng bằng 0
+I03-19,test,GetOutOfStockProducts,Xem những hàng hóa hiện không còn tồn kho
+I03-20,test,GetOutOfStockProducts,Kiểm tra danh sách sản phẩm đã hết hoàn toàn
+I04-01,train,GetInventorySummary,Cho biết tổng tồn kho hiện tại
+I04-02,train,GetInventorySummary,Tổng cộng có bao nhiêu sản phẩm
+I04-03,train,GetInventorySummary,Xem tổng quan giá trị hàng tồn
+I04-04,train,GetInventorySummary,Tổng số lượng trong kho là bao nhiêu
+I04-05,train,GetInventorySummary,Báo cáo tổng hợp tồn kho
+I04-06,train,GetInventorySummary,Tính tổng giá vốn của hàng tồn
+I04-07,train,GetInventorySummary,Cho tôi số liệu tổng quan của kho
+I04-08,train,GetInventorySummary,Tổng giá trị bán lẻ của tồn kho
+I04-09,train,GetInventorySummary,Có bao nhiêu sản phẩm và tổng tồn bao nhiêu
+I04-10,train,GetInventorySummary,Tóm tắt các chỉ số tồn kho toàn hệ thống
+I04-11,train,GetInventorySummary,Hiện bảng tổng hợp số lượng và giá trị kho
+I04-12,train,GetInventorySummary,Đọc tổng quan số liệu hàng tồn
+I04-13,validation,GetInventorySummary,Tôi muốn biết tổng số lượng hàng tồn
+I04-14,validation,GetInventorySummary,Cho xem các chỉ số tổng hợp của kho
+I04-15,validation,GetInventorySummary,Báo cáo tổng quan số lượng sản phẩm
+I04-16,validation,GetInventorySummary,Tổng giá trị tồn kho đang là bao nhiêu
+I04-17,test,GetInventorySummary,Tóm tắt tổng số sản phẩm và tổng tồn
+I04-18,test,GetInventorySummary,Xem tổng quan giá vốn hàng trong kho
+I04-19,test,GetInventorySummary,Cung cấp số liệu tổng hợp tồn hiện tại
+I04-20,test,GetInventorySummary,Cho tôi báo cáo tổng giá trị và số lượng hàng
+I05-01,train,GetStockMovementHistory,Cho xem lịch sử nhập xuất kho
+I05-02,train,GetStockMovementHistory,Liệt kê các biến động tồn kho gần đây
+I05-03,train,GetStockMovementHistory,Tra cứu những phiếu nhập xuất đã ghi
+I05-04,train,GetStockMovementHistory,Hiện nhật ký thay đổi số lượng hàng
+I05-05,train,GetStockMovementHistory,Lấy lịch sử giao dịch kho
+I05-06,train,GetStockMovementHistory,Những lần nhập hàng gần đây là gì
+I05-07,train,GetStockMovementHistory,Xem các lần xuất hàng đã thực hiện
+I05-08,train,GetStockMovementHistory,Danh sách biến động tăng giảm tồn
+I05-09,train,GetStockMovementHistory,Tôi cần nhật ký nhập và xuất hàng
+I05-10,train,GetStockMovementHistory,Liệt kê phiếu biến động kho mới nhất
+I05-11,train,GetStockMovementHistory,Kiểm tra lịch sử điều chỉnh số lượng
+I05-12,train,GetStockMovementHistory,Cho tôi lịch sử thay đổi tồn kho
+I05-13,validation,GetStockMovementHistory,Xem nhật ký các giao dịch nhập xuất
+I05-14,validation,GetStockMovementHistory,Hiện những biến động kho vừa ghi nhận
+I05-15,validation,GetStockMovementHistory,Tra cứu lịch sử tăng giảm số lượng
+I05-16,validation,GetStockMovementHistory,Liệt kê các phiếu xuất nhập gần nhất
+I05-17,test,GetStockMovementHistory,Tôi muốn xem lịch sử giao dịch hàng hóa
+I05-18,test,GetStockMovementHistory,Cho biết những lần thay đổi tồn gần đây
+I05-19,test,GetStockMovementHistory,Mở nhật ký biến động nhập xuất kho
+I05-20,test,GetStockMovementHistory,Xem lại các phiếu điều chỉnh và xuất nhập
+I06-01,train,GetCategorySummary,Tổng hợp tồn theo từng danh mục
+I06-02,train,GetCategorySummary,Cho xem số lượng hàng của mỗi nhóm
+I06-03,train,GetCategorySummary,Báo cáo giá trị tồn theo danh mục sản phẩm
+I06-04,train,GetCategorySummary,Danh mục nào có bao nhiêu sản phẩm
+I06-05,train,GetCategorySummary,Thống kê tồn kho theo nhóm hàng
+I06-06,train,GetCategorySummary,Liệt kê tổng số lượng cho từng danh mục
+I06-07,train,GetCategorySummary,Xem giá vốn hàng tồn của mỗi nhóm sản phẩm
+I06-08,train,GetCategorySummary,So sánh số lượng giữa các danh mục
+I06-09,train,GetCategorySummary,Tôi cần bảng tổng hợp từng nhóm hàng
+I06-10,train,GetCategorySummary,Tóm tắt số liệu tồn theo danh mục
+I06-11,train,GetCategorySummary,Cho biết tổng giá trị mỗi danh mục hàng
+I06-12,train,GetCategorySummary,Thống kê sản phẩm theo từng nhóm
+I06-13,validation,GetCategorySummary,Xem báo cáo số lượng theo danh mục
+I06-14,validation,GetCategorySummary,Tổng hợp giá trị của từng nhóm sản phẩm
+I06-15,validation,GetCategorySummary,Các danh mục có tổng tồn bao nhiêu
+I06-16,validation,GetCategorySummary,Cho bảng thống kê theo nhóm hàng hóa
+I06-17,test,GetCategorySummary,Tôi cần tổng số lượng của mỗi danh mục
+I06-18,test,GetCategorySummary,Thống kê giá vốn tồn kho theo nhóm
+I06-19,test,GetCategorySummary,Tổng hợp mặt hàng theo từng danh mục
+I06-20,test,GetCategorySummary,Xem tổng quan tồn của các nhóm sản phẩm
+I07-01,train,GetWarehouses,Liệt kê các kho hàng của công ty
+I07-02,train,GetWarehouses,Cho tôi danh sách địa điểm lưu kho
+I07-03,train,GetWarehouses,Hệ thống hiện có những kho nào
+I07-04,train,GetWarehouses,Xem thông tin từng kho hàng
+I07-05,train,GetWarehouses,Mở danh sách kho đang hoạt động
+I07-06,train,GetWarehouses,Lấy mã và tên của các kho
+I07-07,train,GetWarehouses,Cho biết những địa điểm quản lý hàng
+I07-08,train,GetWarehouses,Tôi muốn tra cứu danh sách kho
+I07-09,train,GetWarehouses,Hiển thị các kho lưu trữ của hệ thống
+I07-10,train,GetWarehouses,Có những mã kho nào để lựa chọn
+I07-11,train,GetWarehouses,Liệt kê tên kho và trạng thái hoạt động
+I07-12,train,GetWarehouses,Danh sách địa điểm kho hàng hiện tại
+I07-13,validation,GetWarehouses,Cho xem các kho đang được quản lý
+I07-14,validation,GetWarehouses,Tìm danh sách mã kho của công ty
+I07-15,validation,GetWarehouses,Hiện những địa điểm lưu trữ hàng
+I07-16,validation,GetWarehouses,Tôi cần thông tin danh sách kho hàng
+I07-17,test,GetWarehouses,Xem tên và mã những kho hiện có
+I07-18,test,GetWarehouses,Liệt kê các địa điểm kho đang hoạt động
+I07-19,test,GetWarehouses,Cho tôi thông tin các kho lưu hàng
+I07-20,test,GetWarehouses,Mở bảng danh sách kho của hệ thống
+I08-01,train,GetPurchaseOrders,Liệt kê các đơn mua hàng
+I08-02,train,GetPurchaseOrders,Cho xem phiếu đặt hàng nhà cung cấp
+I08-03,train,GetPurchaseOrders,Tôi muốn xem danh sách đơn nhập mua
+I08-04,train,GetPurchaseOrders,Những đơn mua gần đây là gì
+I08-05,train,GetPurchaseOrders,Tra cứu đơn đặt mua sản phẩm
+I08-06,train,GetPurchaseOrders,Hiện bảng đơn mua từ nhà cung cấp
+I08-07,train,GetPurchaseOrders,Lấy danh sách các đơn hàng mua
+I08-08,train,GetPurchaseOrders,Xem những phiếu đặt mua đã tạo
+I08-09,train,GetPurchaseOrders,Liệt kê đơn mua hàng mới nhất
+I08-10,train,GetPurchaseOrders,Cho tôi trạng thái các đơn đặt mua
+I08-11,train,GetPurchaseOrders,Tìm các đơn mua chưa nhận đủ hàng
+I08-12,train,GetPurchaseOrders,Danh sách phiếu mua hàng của công ty
+I08-13,validation,GetPurchaseOrders,Hiển thị các đơn đặt mua hàng hóa
+I08-14,validation,GetPurchaseOrders,Cho xem đơn mua của nhà cung cấp
+I08-15,validation,GetPurchaseOrders,Tôi cần danh sách những phiếu đặt hàng mua
+I08-16,validation,GetPurchaseOrders,Tra cứu bảng đơn hàng nhập mua
+I08-17,test,GetPurchaseOrders,Xem lại các đơn mua đã tạo trong hệ thống
+I08-18,test,GetPurchaseOrders,Liệt kê phiếu đặt mua từ nhà cung cấp
+I08-19,test,GetPurchaseOrders,Mở danh sách đơn mua hàng gần đây
+I08-20,test,GetPurchaseOrders,Tôi muốn kiểm tra các phiếu mua sản phẩm

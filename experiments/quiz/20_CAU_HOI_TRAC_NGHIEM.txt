@@ -1,0 +1,124 @@
+20 CÂU HỎI TRẮC NGHIỆM — MCP C# VÀ QUẢN LÝ KHO THÔNG MINH
+Mỗi câu chỉ chọn một đáp án đúng (A, B, C hoặc D).
+Nội dung dựa trên kiến trúc và thực nghiệm của bộ nộp này.
+
+Câu 1. MCP trong đề tài là gì?
+A. Một hệ quản trị cơ sở dữ liệu thay thế PostgreSQL
+B. Giao thức giúp ứng dụng AI trao đổi với công cụ và nguồn ngữ cảnh
+C. Thuật toán huấn luyện mạng nơ-ron
+D. Một framework xây dựng giao diện React
+
+Câu 2. Trong luồng ứng dụng, MCP Client C# có nhiệm vụ chính nào?
+A. Tự cấp quyền Admin cho người đăng nhập
+B. Thay thế transaction của PostgreSQL
+C. Kết nối MCP Server, khám phá và gọi công cụ được cho phép
+D. Huấn luyện lại LLM mỗi khi có câu hỏi
+
+Câu 3. Phát biểu nào phân biệt đúng Tool và Resource trong MCP?
+A. Tool cung cấp thao tác có thể gọi; Resource cung cấp nội dung/ngữ cảnh có thể đọc
+B. Resource luôn cập nhật tồn kho còn Tool chỉ chứa ảnh
+C. Tool và Resource đều là tài khoản người dùng
+D. Tool là bảng SQL còn Resource là khóa ngoại
+
+Câu 4. Prompt trong MCP phù hợp với mô tả nào?
+A. Là kết quả huấn luyện luôn đúng của LLM
+B. Là mật khẩu dùng để kết nối PostgreSQL
+C. Là một biến môi trường chứa JWT
+D. Là mẫu thông điệp/hướng dẫn có thể tái sử dụng để làm việc với công cụ hoặc ngữ cảnh
+
+Câu 5. Trong C# MCP Client của bài, cặp thao tác nào phù hợp để khám phá rồi gọi tool?
+A. HashPassword và VerifyHashedPassword
+B. ListToolsAsync và CallToolAsync
+C. BeginTransactionAsync và CommitAsync
+D. RenderAsync và NavigateAsync
+
+Câu 6. Vì sao kiểm thử không nên chỉ dựa vào HTTP 200 khi gọi tool?
+A. HTTP 200 luôn có nghĩa đã huấn luyện xong
+B. HTTP 200 chứng minh tài khoản có mọi quyền
+C. HTTP 200 bảo đảm mọi số liệu giống dataset mẫu
+D. Kết quả MCP có thể báo isError hoặc trạng thái lỗi tool dù HTTP trao đổi thành công
+
+Câu 7. Có 32 sản phẩm và gọi GetAllProducts với page=1, pageSize=5. Kết quả mong đợi là gì?
+A. Trả 32 dòng và totalCount=5
+B. Trả 5 dòng và totalCount=5
+C. Trả 5 dòng và totalCount=32
+D. Trả 0 dòng vì page phải bắt đầu từ 0
+
+Câu 8. Vì sao API và MCP nên dùng chung service nghiệp vụ kho?
+A. Để các quy tắc kiểm tra và cập nhật dữ liệu nhất quán giữa hai đường truy cập
+B. Để bỏ kiểm tra quyền ở MCP
+C. Để tránh cần database
+D. Để Tool không còn phải trả lỗi
+
+Câu 9. Khi LLM đề nghị nhập kho qua write tool, hành vi nào đúng với thiết kế của bài?
+A. LLM tự xác nhận đề nghị do chính nó tạo
+B. Ghi thẳng SQL trước rồi hỏi lại người dùng
+C. Ứng dụng lưu đề nghị và chờ xác nhận người dùng trước khi ghi
+D. Mọi yêu cầu ghi được chuyển thành dữ liệu mô phỏng
+
+Câu 10. Gửi lại cùng một yêu cầu ghi đã thành công với cùng request ID nên có kết quả nào?
+A. Trả kết quả đã lưu, không tạo thêm lần cập nhật tồn
+B. Tăng tồn thêm một lần để bảo đảm nhận được yêu cầu
+C. Xóa lịch sử của lần ghi đầu
+D. Tạo tài khoản mới để chạy lại yêu cầu
+
+Câu 11. Vai trò Customer trong ứng dụng được phép làm gì?
+A. Quản lý mọi tài khoản và sửa cấu hình
+B. Điều chỉnh tồn ở tất cả kho
+C. Gọi mọi write tool MCP không cần xác nhận
+D. Xem/cập nhật hồ sơ cá nhân và đổi mật khẩu theo quyền tài khoản
+
+Câu 12. Phần Training mới trong bộ nộp huấn luyện thành phần nào?
+A. Huấn luyện lại giao thức MCP
+B. Bộ phân loại TF-IDF + softmax bằng C# để chọn một read tool
+C. Fine-tune toàn bộ LLM Groq đang dùng trong AI Assistant
+D. Huấn luyện PostgreSQL nhận dạng giọng nói
+
+Câu 13. Cách chia 160 câu hỏi mẫu trong thực nghiệm là gì?
+A. 160 Train và dùng lại toàn bộ làm Test
+B. 80 Train, 80 Test, không có Validation
+C. 96 Train, 32 Validation, 32 Test
+D. 32 Train, 96 Validation, 32 Test
+
+Câu 14. Từ vựng và IDF nên được fit trên tập nào trong pipeline này?
+A. Chỉ trên Train
+B. Trên toàn bộ Train, Validation và Test
+C. Chỉ trên Test
+D. Trên những câu Test mà mô hình dự đoán sai
+
+Câu 15. Khi một cấu hình có Test cao hơn cấu hình đã chọn bằng Validation, nên làm gì trong lượt đánh giá này?
+A. Luôn đổi sang cấu hình có Test cao nhất
+B. Xóa các cấu hình có Test thấp khỏi log
+C. Dùng nhãn Test để sửa trọng số ngay rồi báo lại Test
+D. Giữ lựa chọn đã khóa bằng Validation và báo cáo đầy đủ kết quả Test
+
+Câu 16. Một epoch trong quá trình huấn luyện full-batch của bài có ý nghĩa gì?
+A. Một lần gọi API GetInventorySummary
+B. Một lượt dùng toàn bộ tập Train để tính và cập nhật gradient
+C. Một lần chia lại Train/Test bằng dữ liệu mới
+D. Một lần đổi mật khẩu tài khoản Admin
+
+Câu 17. Thông tin nào thuộc log Training theo từng epoch?
+A. Mã cấu hình, epoch, train/validation loss và accuracy/F1
+B. Chỉ tên sản phẩm và giá bán
+C. Chỉ HTTP status và execution ID của MCP
+D. Mật khẩu PostgreSQL và API key của LLM
+
+Câu 18. Mô hình dự đoán đúng 30 trong 32 câu Test. Accuracy bằng bao nhiêu?
+A. 30%
+B. 32%
+C. 93,75%
+D. 100%
+
+Câu 19. Với 8 lớp cân bằng, baseline luôn dự đoán một lớp có accuracy Test là bao nhiêu?
+A. 50%
+B. 12,5%
+C. 87,5%
+D. 100%
+
+Câu 20. Nhận xét/cải tiến nào phù hợp với kết quả của bộ nộp?
+A. Train đạt 100% nên có thể bỏ qua Test
+B. Tập con tích hợp MCP 8 câu đúng chứng minh mọi câu hỏi thực tế đều đúng
+C. Dùng softmax score như xác suất đúng đã được hiệu chỉnh cho production
+D. Cần dữ liệu người dùng được phép thu thập, gán nhãn độc lập, kiểm tra ngoài miền và giữ kiểm tra quyền ở backend
+

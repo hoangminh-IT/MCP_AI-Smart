@@ -14,6 +14,7 @@ public sealed partial class AppDbContext(DbContextOptions<AppDbContext> options,
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshSession> RefreshSessions => Set<RefreshSession>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
     public DbSet<Customer> Customers => Set<Customer>();
@@ -45,6 +46,7 @@ public sealed partial class AppDbContext(DbContextOptions<AppDbContext> options,
         modelBuilder.ConfigureSalesOrders();
         modelBuilder.ConfigureMcpWrites();
         modelBuilder.ConfigureRefreshSessions();
+        modelBuilder.ConfigurePasswordRecovery();
         modelBuilder.ConfigureWarehouses();
 
         modelBuilder.Entity<UserNotification>(notification =>

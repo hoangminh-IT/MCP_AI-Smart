@@ -1,0 +1,6 @@
+{
+  "source": "PostgreSQL test database snapshot read by the executed notebook",
+  "observedNotebookRunId": "20261121T120616009173Z",
+  "sourceFile": "experiments/results/notebook/20261121T120616009173Z/real_inventory_snapshot.csv",
+  "purpose": "MCP/SQL comparison, not model training or real sales history"
+}

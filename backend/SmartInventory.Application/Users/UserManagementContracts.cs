@@ -27,12 +27,12 @@ public class UpdateUserRequest
 public sealed class CreateUserRequest : UpdateUserRequest
 {
     [Required, MaxLength(80)] public string Username { get; set; } = string.Empty;
-    [Required, MinLength(12), MaxLength(128)] public string Password { get; set; } = string.Empty;
+    [Required] public string Password { get; set; } = string.Empty;
 }
 
 public sealed class ResetUserPasswordRequest
 {
-    [Required, MinLength(12), MaxLength(128)] public string NewPassword { get; set; } = string.Empty;
+    [Required] public string NewPassword { get; set; } = string.Empty;
 }
 
 /// <summary>Administrative account metadata. Credential hashes and token versions are deliberately excluded.</summary>

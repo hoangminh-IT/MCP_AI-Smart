@@ -1,0 +1,11 @@
+case,tool,arguments,returned,total,executionId,serverDurationMs,status
+PAGE-5,GetAllProducts,"{""page"": 1, ""pageSize"": 5}",5,32,1,54,Succeeded
+PAGE-10,GetAllProducts,"{""page"": 1, ""pageSize"": 10}",10,32,2,16,Succeeded
+PAGE-20,GetAllProducts,"{""page"": 1, ""pageSize"": 20}",20,32,3,17,Succeeded
+PAGE-100,GetAllProducts,"{""page"": 1, ""pageSize"": 100}",32,32,4,15,Succeeded
+LOW-0,GetLowStockProducts,"{""threshold"": 0, ""page"": 1, ""pageSize"": 100}",0,0,5,25,Succeeded
+LOW-5,GetLowStockProducts,"{""threshold"": 5, ""page"": 1, ""pageSize"": 100}",25,25,6,10,Succeeded
+LOW-20,GetLowStockProducts,"{""threshold"": 20, ""page"": 1, ""pageSize"": 100}",29,29,7,14,Succeeded
+OUT,GetOutOfStockProducts,"{""page"": 1, ""pageSize"": 100}",24,24,8,24,Succeeded
+ID,GetProductById,"{""id"": 7}",1,1,9,8,Succeeded
+SKU,GetProductBySku,"{""sku"": ""SP007""}",1,1,10,13,Succeeded

@@ -1,0 +1,432 @@
+{
+  "passed": true,
+  "findings": [
+    {
+      "mode": "desktop-light",
+      "route": "dashboard",
+      "heading": "Tổng quan kho hàng",
+      "path": "/dashboard",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "reports",
+      "heading": "Báo cáo",
+      "path": "/reports",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "notifications",
+      "heading": "Thông báo",
+      "path": "/notifications",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "inventory",
+      "heading": "Tồn kho",
+      "path": "/inventory",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "warehouses",
+      "heading": "Kho hàng",
+      "path": "/warehouses",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "transfers",
+      "heading": "Chuyển kho",
+      "path": "/transfers",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "products",
+      "heading": "Sản phẩm",
+      "path": "/products",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "categories",
+      "heading": "Danh mục sản phẩm",
+      "path": "/categories",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "stock-movements",
+      "heading": "Lịch sử biến động",
+      "path": "/stock-movements",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "suppliers",
+      "heading": "Nhà cung cấp",
+      "path": "/suppliers",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "customers",
+      "heading": "Khách hàng",
+      "path": "/customers",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "purchase-orders",
+      "heading": "Đơn mua hàng",
+      "path": "/purchase-orders",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "sales-orders",
+      "heading": "Đơn bán hàng",
+      "path": "/sales-orders",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "ai",
+      "heading": "AI Assistant",
+      "path": "/ai",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "mcp/lab",
+      "heading": "MCP Client Lab",
+      "path": "/mcp/lab",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "mcp/playground",
+      "heading": "MCP Tool Playground",
+      "path": "/mcp/playground",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "mcp/trace",
+      "heading": "MCP Execution Trace",
+      "path": "/mcp/trace",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "profile",
+      "heading": "Hồ sơ của tôi",
+      "path": "/profile",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "users",
+      "heading": "Người dùng",
+      "path": "/users",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "settings",
+      "heading": "Cài đặt",
+      "path": "/settings",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-light",
+      "route": "audit",
+      "heading": "Nhật ký kiểm toán",
+      "path": "/audit",
+      "overflow": false,
+      "theme": "light",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "dashboard",
+      "heading": "Tổng quan kho hàng",
+      "path": "/dashboard",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "reports",
+      "heading": "Báo cáo",
+      "path": "/reports",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "notifications",
+      "heading": "Thông báo",
+      "path": "/notifications",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "inventory",
+      "heading": "Tồn kho",
+      "path": "/inventory",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "warehouses",
+      "heading": "Kho hàng",
+      "path": "/warehouses",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "transfers",
+      "heading": "Chuyển kho",
+      "path": "/transfers",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "products",
+      "heading": "Sản phẩm",
+      "path": "/products",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "categories",
+      "heading": "Danh mục sản phẩm",
+      "path": "/categories",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "stock-movements",
+      "heading": "Lịch sử biến động",
+      "path": "/stock-movements",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "suppliers",
+      "heading": "Nhà cung cấp",
+      "path": "/suppliers",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "customers",
+      "heading": "Khách hàng",
+      "path": "/customers",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "purchase-orders",
+      "heading": "Đơn mua hàng",
+      "path": "/purchase-orders",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "sales-orders",
+      "heading": "Đơn bán hàng",
+      "path": "/sales-orders",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "ai",
+      "heading": "AI Assistant",
+      "path": "/ai",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "mcp/lab",
+      "heading": "MCP Client Lab",
+      "path": "/mcp/lab",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "mcp/playground",
+      "heading": "MCP Tool Playground",
+      "path": "/mcp/playground",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "mcp/trace",
+      "heading": "MCP Execution Trace",
+      "path": "/mcp/trace",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "profile",
+      "heading": "Hồ sơ của tôi",
+      "path": "/profile",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "users",
+      "heading": "Người dùng",
+      "path": "/users",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "settings",
+      "heading": "Cài đặt",
+      "path": "/settings",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "mode": "mobile-dark",
+      "route": "audit",
+      "heading": "Nhật ký kiểm toán",
+      "path": "/audit",
+      "overflow": false,
+      "theme": "dark",
+      "errors": []
+    },
+    {
+      "role": "Staff",
+      "route": "users",
+      "actualPath": "/dashboard",
+      "pass": true
+    },
+    {
+      "role": "Staff",
+      "route": "audit",
+      "actualPath": "/dashboard",
+      "pass": true
+    },
+    {
+      "role": "Staff",
+      "route": "inventory",
+      "actualPath": "/inventory",
+      "pass": true
+    },
+    {
+      "role": "Staff",
+      "route": "mcp/lab",
+      "actualPath": "/mcp/lab",
+      "pass": true
+    },
+    {
+      "role": "Customer",
+      "route": "users",
+      "actualPath": "/profile",
+      "pass": true
+    },
+    {
+      "role": "Customer",
+      "route": "audit",
+      "actualPath": "/profile",
+      "pass": true
+    },
+    {
+      "role": "Customer",
+      "route": "inventory",
+      "actualPath": "/profile",
+      "pass": true
+    },
+    {
+      "role": "Customer",
+      "route": "mcp/lab",
+      "actualPath": "/profile",
+      "pass": true
+    }
+  ],
+  "runtimeErrors": []
+}

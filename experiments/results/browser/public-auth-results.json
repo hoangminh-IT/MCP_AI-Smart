@@ -1,0 +1,21 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "Registration requires all five fields",
+      "pass": true
+    },
+    {
+      "name": "Login links to password recovery",
+      "pass": true
+    },
+    {
+      "name": "Recovery requires username and email",
+      "pass": true
+    },
+    {
+      "name": "Reset page rejects a missing credential",
+      "pass": true
+    }
+  ]
+}

@@ -15,7 +15,7 @@ public static class UserRoles
 
 public sealed record LoginRequest(
     [Required, MaxLength(80)] string Username,
-    [Required, MaxLength(128)] string Password);
+    [Required] string Password);
 
 /// <summary>Public account registration. Access roles and activation are assigned exclusively by the server.</summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
@@ -23,16 +23,16 @@ public sealed record RegisterRequest(
     [Required, MaxLength(80)] string Username,
     [Required, EmailAddress, MaxLength(254)] string Email,
     [Required, MaxLength(160)] string FullName,
-    [Required, MinLength(12), MaxLength(128)] string Password,
-    [Required, MinLength(12), MaxLength(128)] string ConfirmPassword);
+    [Required] string Password,
+    [Required] string ConfirmPassword);
 
 public sealed record UpdateProfileRequest(
     [Required, EmailAddress, MaxLength(254)] string Email,
     [Required, MaxLength(160)] string FullName);
 
 public sealed record ChangePasswordRequest(
-    [Required, MaxLength(128)] string CurrentPassword,
-    [Required, MinLength(12), MaxLength(128)] string NewPassword);
+    [Required] string CurrentPassword,
+    [Required] string NewPassword);
 
 public sealed record UserProfile(int Id, string Username, string Email, string FullName, string Role)
 {

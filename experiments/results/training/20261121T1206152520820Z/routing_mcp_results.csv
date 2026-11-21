@@ -1,0 +1,9 @@
+id,question,expectedTool,predictedTool,routingCorrect,executionId,status,serverDurationMs
+I01-17,Cho xem tất cả mặt hàng đang hoạt động,GetAllProducts,GetAllProducts,True,33,Succeeded,13
+I06-17,Tôi cần tổng số lượng của mỗi danh mục,GetCategorySummary,GetCategorySummary,True,34,Succeeded,14
+I04-17,Tóm tắt tổng số sản phẩm và tổng tồn,GetInventorySummary,GetInventorySummary,True,35,Succeeded,37
+I02-17,Liệt kê những sản phẩm gần hết hàng,GetLowStockProducts,GetLowStockProducts,True,36,Succeeded,19
+I03-17,Liệt kê mặt hàng đã hết sạch,GetOutOfStockProducts,GetOutOfStockProducts,True,37,Succeeded,12
+I08-17,Xem lại các đơn mua đã tạo trong hệ thống,GetPurchaseOrders,GetPurchaseOrders,True,38,Succeeded,23
+I05-17,Tôi muốn xem lịch sử giao dịch hàng hóa,GetStockMovementHistory,GetStockMovementHistory,True,39,Succeeded,17
+I07-17,Xem tên và mã những kho hiện có,GetWarehouses,GetWarehouses,True,40,Succeeded,14

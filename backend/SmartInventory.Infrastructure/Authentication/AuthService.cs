@@ -81,9 +81,9 @@ public sealed partial class AuthService(
     public async Task ChangePasswordAsync(int userId, ChangePasswordRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(request.NewPassword) || request.NewPassword.Length is < 12 or > 128)
+        if (string.IsNullOrWhiteSpace(request.NewPassword))
             throw new AppValidationException("Password validation failed.",
-                new Dictionary<string, string[]> { ["newPassword"] = ["Use 12 to 128 characters."] });
+                new Dictionary<string, string[]> { ["newPassword"] = ["Password must not be empty or whitespace only."] });
 
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var user = await LockUserAsync(userId, cancellationToken);

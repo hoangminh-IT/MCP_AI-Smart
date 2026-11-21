@@ -74,8 +74,8 @@ public sealed partial class AuthService
             errors["email"] = ["Enter a valid email address of at most 254 characters."];
         if (fullName.Length is 0 or > 160 || fullName.Any(char.IsControl))
             errors["fullName"] = ["Full name must contain 1 to 160 characters without control characters."];
-        if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length is < 12 or > 128)
-            errors["password"] = ["Use 12 to 128 characters."];
+        if (string.IsNullOrWhiteSpace(request.Password))
+            errors["password"] = ["Password must not be empty or whitespace only."];
         if (string.IsNullOrEmpty(request.ConfirmPassword) || request.ConfirmPassword != request.Password)
             errors["confirmPassword"] = ["Password confirmation must match the password."];
         if (errors.Count != 0)

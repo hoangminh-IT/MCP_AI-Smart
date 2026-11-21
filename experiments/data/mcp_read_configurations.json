@@ -1,0 +1,88 @@
+{
+  "source": "Parameters captured from the executed PostgreSQL/MCP notebook; not model training hyperparameters.",
+  "observedRunId": "20261121T120616009173Z",
+  "replayNote": "Product IDs/SKUs refer to the isolated test database of this run. The notebook reads a fresh snapshot to build equivalent cases when rerun.",
+  "configurations": [
+    {
+      "id": "PAGE-5",
+      "tool": "GetAllProducts",
+      "arguments": {
+        "page": 1,
+        "pageSize": 5
+      }
+    },
+    {
+      "id": "PAGE-10",
+      "tool": "GetAllProducts",
+      "arguments": {
+        "page": 1,
+        "pageSize": 10
+      }
+    },
+    {
+      "id": "PAGE-20",
+      "tool": "GetAllProducts",
+      "arguments": {
+        "page": 1,
+        "pageSize": 20
+      }
+    },
+    {
+      "id": "PAGE-100",
+      "tool": "GetAllProducts",
+      "arguments": {
+        "page": 1,
+        "pageSize": 100
+      }
+    },
+    {
+      "id": "LOW-0",
+      "tool": "GetLowStockProducts",
+      "arguments": {
+        "threshold": 0,
+        "page": 1,
+        "pageSize": 100
+      }
+    },
+    {
+      "id": "LOW-5",
+      "tool": "GetLowStockProducts",
+      "arguments": {
+        "threshold": 5,
+        "page": 1,
+        "pageSize": 100
+      }
+    },
+    {
+      "id": "LOW-20",
+      "tool": "GetLowStockProducts",
+      "arguments": {
+        "threshold": 20,
+        "page": 1,
+        "pageSize": 100
+      }
+    },
+    {
+      "id": "OUT",
+      "tool": "GetOutOfStockProducts",
+      "arguments": {
+        "page": 1,
+        "pageSize": 100
+      }
+    },
+    {
+      "id": "ID",
+      "tool": "GetProductById",
+      "arguments": {
+        "id": 1
+      }
+    },
+    {
+      "id": "SKU",
+      "tool": "GetProductBySku",
+      "arguments": {
+        "sku": "SP001"
+      }
+    }
+  ]
+}
